@@ -551,8 +551,8 @@ namespace dsn {
             auto dir = chkpt_get_dir_name(ci);
             auto chkpt_dir = utils::filesystem::path_combine(data_dir(), dir);
 
-            std::vector<std::string> files;
-            auto succ = utils::filesystem::get_subfiles(chkpt_dir, files, true);
+            state.files.clear();
+            auto succ = utils::filesystem::get_subfiles(chkpt_dir, state.files, true);
             if (!succ)
             {
                 derror("%s: list files in checkpoint dir %s failed", data_dir(), chkpt_dir.c_str());
