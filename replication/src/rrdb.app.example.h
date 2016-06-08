@@ -45,7 +45,7 @@ public:
             update_request req;
             //sync:
             error_code err;
-            int32_t resp;
+            update_response resp;
             std::tie(err, resp) = _rrdb_client->put_sync(req);
             std::cout << "call RPC_RRDB_RRDB_PUT end, return " << err.to_string() << std::endl;
             //async: 
@@ -56,22 +56,11 @@ public:
             ::dsn::blob req;
             //sync:
             error_code err;
-            int32_t resp;
+            update_response resp;
             std::tie(err, resp) = _rrdb_client->remove_sync(req);
             std::cout << "call RPC_RRDB_RRDB_REMOVE end, return " << err.to_string() << std::endl;
             //async: 
             //_rrdb_client->remove(req, empty_callback);
-           
-        }
-        {
-            update_request req;
-            //sync:
-            error_code err;
-            int32_t resp;
-            std::tie(err, resp) = _rrdb_client->merge_sync(req);
-            std::cout << "call RPC_RRDB_RRDB_MERGE end, return " << err.to_string() << std::endl;
-            //async: 
-            //_rrdb_client->merge(req, empty_callback);
            
         }
         {

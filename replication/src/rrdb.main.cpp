@@ -22,5 +22,6 @@ int main(int argc, char** argv)
 
     // specify what services and tools will run in config file, then run
     dsn_run(argc, argv, true);
+
     return 0;
 }

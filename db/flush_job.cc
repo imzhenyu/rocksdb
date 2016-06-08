@@ -147,7 +147,7 @@ Status FlushJob::Run(FileMetaData* file_meta) {
     SequenceNumber seq;
     uint64_t d;
     mem->GetLastSeqDecree(&seq, &d);
-    edit->UpdateLastSeqDecree(seq, d);
+    edit->UpdateLastFlushSeqDecree(seq, d);
   }
 
   // This will release and re-acquire the mutex.

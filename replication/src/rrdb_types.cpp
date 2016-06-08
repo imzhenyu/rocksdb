@@ -121,6 +121,212 @@ void update_request::printTo(std::ostream& out) const {
 }
 
 
+update_response::~update_response() throw() {
+}
+
+
+void update_response::__set_error(const int32_t val) {
+  this->error = val;
+}
+
+void update_response::__set_app_id(const int32_t val) {
+  this->app_id = val;
+}
+
+void update_response::__set_pidx(const int32_t val) {
+  this->pidx = val;
+}
+
+void update_response::__set_ballot(const int64_t val) {
+  this->ballot = val;
+}
+
+void update_response::__set_decree(const int64_t val) {
+  this->decree = val;
+}
+
+void update_response::__set_seqno(const int64_t val) {
+  this->seqno = val;
+}
+
+void update_response::__set_server(const std::string& val) {
+  this->server = val;
+}
+
+uint32_t update_response::read(::apache::thrift::protocol::TProtocol* iprot) {
+
+  apache::thrift::protocol::TInputRecursionTracker tracker(*iprot);
+  uint32_t xfer = 0;
+  std::string fname;
+  ::apache::thrift::protocol::TType ftype;
+  int16_t fid;
+
+  xfer += iprot->readStructBegin(fname);
+
+  using ::apache::thrift::protocol::TProtocolException;
+
+
+  while (true)
+  {
+    xfer += iprot->readFieldBegin(fname, ftype, fid);
+    if (ftype == ::apache::thrift::protocol::T_STOP) {
+      break;
+    }
+    switch (fid)
+    {
+      case 1:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->error);
+          this->__isset.error = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 2:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->app_id);
+          this->__isset.app_id = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 3:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->pidx);
+          this->__isset.pidx = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 4:
+        if (ftype == ::apache::thrift::protocol::T_I64) {
+          xfer += iprot->readI64(this->ballot);
+          this->__isset.ballot = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 5:
+        if (ftype == ::apache::thrift::protocol::T_I64) {
+          xfer += iprot->readI64(this->decree);
+          this->__isset.decree = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 6:
+        if (ftype == ::apache::thrift::protocol::T_I64) {
+          xfer += iprot->readI64(this->seqno);
+          this->__isset.seqno = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 7:
+        if (ftype == ::apache::thrift::protocol::T_STRING) {
+          xfer += iprot->readString(this->server);
+          this->__isset.server = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      default:
+        xfer += iprot->skip(ftype);
+        break;
+    }
+    xfer += iprot->readFieldEnd();
+  }
+
+  xfer += iprot->readStructEnd();
+
+  return xfer;
+}
+
+uint32_t update_response::write(::apache::thrift::protocol::TProtocol* oprot) const {
+  uint32_t xfer = 0;
+  apache::thrift::protocol::TOutputRecursionTracker tracker(*oprot);
+  xfer += oprot->writeStructBegin("update_response");
+
+  xfer += oprot->writeFieldBegin("error", ::apache::thrift::protocol::T_I32, 1);
+  xfer += oprot->writeI32(this->error);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("app_id", ::apache::thrift::protocol::T_I32, 2);
+  xfer += oprot->writeI32(this->app_id);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("pidx", ::apache::thrift::protocol::T_I32, 3);
+  xfer += oprot->writeI32(this->pidx);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("ballot", ::apache::thrift::protocol::T_I64, 4);
+  xfer += oprot->writeI64(this->ballot);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("decree", ::apache::thrift::protocol::T_I64, 5);
+  xfer += oprot->writeI64(this->decree);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("seqno", ::apache::thrift::protocol::T_I64, 6);
+  xfer += oprot->writeI64(this->seqno);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("server", ::apache::thrift::protocol::T_STRING, 7);
+  xfer += oprot->writeString(this->server);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldStop();
+  xfer += oprot->writeStructEnd();
+  return xfer;
+}
+
+void swap(update_response &a, update_response &b) {
+  using ::std::swap;
+  swap(a.error, b.error);
+  swap(a.app_id, b.app_id);
+  swap(a.pidx, b.pidx);
+  swap(a.ballot, b.ballot);
+  swap(a.decree, b.decree);
+  swap(a.seqno, b.seqno);
+  swap(a.server, b.server);
+  swap(a.__isset, b.__isset);
+}
+
+update_response::update_response(const update_response& other2) {
+  error = other2.error;
+  app_id = other2.app_id;
+  pidx = other2.pidx;
+  ballot = other2.ballot;
+  decree = other2.decree;
+  seqno = other2.seqno;
+  server = other2.server;
+  __isset = other2.__isset;
+}
+update_response& update_response::operator=(const update_response& other3) {
+  error = other3.error;
+  app_id = other3.app_id;
+  pidx = other3.pidx;
+  ballot = other3.ballot;
+  decree = other3.decree;
+  seqno = other3.seqno;
+  server = other3.server;
+  __isset = other3.__isset;
+  return *this;
+}
+void update_response::printTo(std::ostream& out) const {
+  using ::apache::thrift::to_string;
+  out << "update_response(";
+  out << "error=" << to_string(error);
+  out << ", " << "app_id=" << to_string(app_id);
+  out << ", " << "pidx=" << to_string(pidx);
+  out << ", " << "ballot=" << to_string(ballot);
+  out << ", " << "decree=" << to_string(decree);
+  out << ", " << "seqno=" << to_string(seqno);
+  out << ", " << "server=" << to_string(server);
+  out << ")";
+}
+
+
 read_response::~read_response() throw() {
 }
 
@@ -131,6 +337,22 @@ void read_response::__set_error(const int32_t val) {
 
 void read_response::__set_value(const  ::dsn::blob& val) {
   this->value = val;
+}
+
+void read_response::__set_app_id(const int32_t val) {
+  this->app_id = val;
+}
+
+void read_response::__set_pidx(const int32_t val) {
+  this->pidx = val;
+}
+
+void read_response::__set_ballot(const int64_t val) {
+  this->ballot = val;
+}
+
+void read_response::__set_server(const std::string& val) {
+  this->server = val;
 }
 
 uint32_t read_response::read(::apache::thrift::protocol::TProtocol* iprot) {
@@ -170,6 +392,38 @@ uint32_t read_response::read(::apache::thrift::protocol::TProtocol* iprot) {
           xfer += iprot->skip(ftype);
         }
         break;
+      case 3:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->app_id);
+          this->__isset.app_id = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 4:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->pidx);
+          this->__isset.pidx = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 5:
+        if (ftype == ::apache::thrift::protocol::T_I64) {
+          xfer += iprot->readI64(this->ballot);
+          this->__isset.ballot = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 6:
+        if (ftype == ::apache::thrift::protocol::T_STRING) {
+          xfer += iprot->readString(this->server);
+          this->__isset.server = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
       default:
         xfer += iprot->skip(ftype);
         break;
@@ -195,6 +449,22 @@ uint32_t read_response::write(::apache::thrift::protocol::TProtocol* oprot) cons
   xfer += this->value.write(oprot);
   xfer += oprot->writeFieldEnd();
 
+  xfer += oprot->writeFieldBegin("app_id", ::apache::thrift::protocol::T_I32, 3);
+  xfer += oprot->writeI32(this->app_id);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("pidx", ::apache::thrift::protocol::T_I32, 4);
+  xfer += oprot->writeI32(this->pidx);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("ballot", ::apache::thrift::protocol::T_I64, 5);
+  xfer += oprot->writeI64(this->ballot);
+  xfer += oprot->writeFieldEnd();
+
+  xfer += oprot->writeFieldBegin("server", ::apache::thrift::protocol::T_STRING, 6);
+  xfer += oprot->writeString(this->server);
+  xfer += oprot->writeFieldEnd();
+
   xfer += oprot->writeFieldStop();
   xfer += oprot->writeStructEnd();
   return xfer;
@@ -204,18 +474,30 @@ void swap(read_response &a, read_response &b) {
   using ::std::swap;
   swap(a.error, b.error);
   swap(a.value, b.value);
+  swap(a.app_id, b.app_id);
+  swap(a.pidx, b.pidx);
+  swap(a.ballot, b.ballot);
+  swap(a.server, b.server);
   swap(a.__isset, b.__isset);
 }
 
-read_response::read_response(const read_response& other2) {
-  error = other2.error;
-  value = other2.value;
-  __isset = other2.__isset;
+read_response::read_response(const read_response& other4) {
+  error = other4.error;
+  value = other4.value;
+  app_id = other4.app_id;
+  pidx = other4.pidx;
+  ballot = other4.ballot;
+  server = other4.server;
+  __isset = other4.__isset;
 }
-read_response& read_response::operator=(const read_response& other3) {
-  error = other3.error;
-  value = other3.value;
-  __isset = other3.__isset;
+read_response& read_response::operator=(const read_response& other5) {
+  error = other5.error;
+  value = other5.value;
+  app_id = other5.app_id;
+  pidx = other5.pidx;
+  ballot = other5.ballot;
+  server = other5.server;
+  __isset = other5.__isset;
   return *this;
 }
 void read_response::printTo(std::ostream& out) const {
@@ -223,6 +505,10 @@ void read_response::printTo(std::ostream& out) const {
   out << "read_response(";
   out << "error=" << to_string(error);
   out << ", " << "value=" << to_string(value);
+  out << ", " << "app_id=" << to_string(app_id);
+  out << ", " << "pidx=" << to_string(pidx);
+  out << ", " << "ballot=" << to_string(ballot);
+  out << ", " << "server=" << to_string(server);
   out << ")";
 }
 

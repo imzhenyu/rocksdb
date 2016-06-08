@@ -125,10 +125,10 @@ class WriteBatchInternal {
   // memtables->GetLogNumber() >= log_number
   static Status InsertInto(const WriteBatch* batch,
                            ColumnFamilyMemTables* memtables,
-                           uint64_t decree = 0,
                            bool ignore_missing_column_families = false,
                            uint64_t log_number = 0, DB* db = nullptr,
-                           const bool dont_filter_deletes = true);
+                           const bool dont_filter_deletes = true,
+                           uint64_t decree = 0);
 
   static void Append(WriteBatch* dst, const WriteBatch* src);
 };

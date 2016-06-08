@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <stdint.h>
 #include "rrdb_error.h"
 
 namespace dsn { namespace apps {
@@ -13,6 +14,17 @@ namespace dsn { namespace apps {
 ///
 class irrdb_client
 {
+public:
+    struct internal_info
+    {
+        int32_t app_id;
+        int32_t pidx;
+        int64_t ballot;
+        int64_t decree;
+        int64_t seqno;
+        std::string server;
+    };
+
 public:
     // destructor
     virtual ~irrdb_client(){}
@@ -53,7 +65,8 @@ public:
         const std::string& hashkey,
         const std::string& sortkey,
         const std::string& value,
-        int timeout_milliseconds = 5000
+        int timeout_milliseconds = 5000,
+        internal_info* info = NULL
         ) = 0;
 
     ///
@@ -76,7 +89,8 @@ public:
         const std::string& hashkey,
         const std::string& sortkey,
         std::string& value,
-        int timeout_milliseconds = 5000
+        int timeout_milliseconds = 5000,
+        internal_info* info = NULL
         ) = 0;
 
     ///
@@ -96,7 +110,8 @@ public:
     virtual int del(
         const std::string& hashkey,
         const std::string& sortkey,
-        int timeout_milliseconds = 5000
+        int timeout_milliseconds = 5000,
+        internal_info* info = NULL
         ) = 0;
 
     ///

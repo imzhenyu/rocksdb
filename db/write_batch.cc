@@ -414,9 +414,9 @@ class MemTableInserter : public WriteBatch::Handler {
   DBImpl* db_;
   const bool dont_filter_deletes_;
 
-  MemTableInserter(SequenceNumber sequence, ColumnFamilyMemTables* cf_mems, uint64_t decree,
+  MemTableInserter(SequenceNumber sequence, ColumnFamilyMemTables* cf_mems,
                    bool ignore_missing_column_families, uint64_t log_number,
-                   DB* db, const bool dont_filter_deletes)
+                   DB* db, const bool dont_filter_deletes, uint64_t decree)
       : sequence_(sequence),
         cf_mems_(cf_mems),
         decree_(decree),
@@ -664,13 +664,13 @@ class MemTableInserter : public WriteBatch::Handler {
 // to be called from a single-threaded write thread (or while holding DB mutex)
 Status WriteBatchInternal::InsertInto(const WriteBatch* b,
                                       ColumnFamilyMemTables* memtables,
-                                      uint64_t decree,
                                       bool ignore_missing_column_families,
                                       uint64_t log_number, DB* db,
-                                      const bool dont_filter_deletes) {
-  MemTableInserter inserter(WriteBatchInternal::Sequence(b), memtables, decree,
+                                      const bool dont_filter_deletes,
+                                      uint64_t decree) {
+  MemTableInserter inserter(WriteBatchInternal::Sequence(b), memtables,
                             ignore_missing_column_families, log_number, db,
-                            dont_filter_deletes);
+                            dont_filter_deletes, decree);
   return b->Iterate(&inserter);
 }
 

@@ -3916,8 +3916,9 @@ Status DBImpl::WriteImpl(const WriteOptions& write_options,
         PERF_TIMER_GUARD(write_memtable_time);
 
         status = WriteBatchInternal::InsertInto(
-            updates, column_family_memtables_.get(), write_options.given_decree,
-            write_options.ignore_missing_column_families, 0, this, false);
+            updates, column_family_memtables_.get(),
+            write_options.ignore_missing_column_families, 0, this, false,
+            write_options.given_decree);
         // A non-OK status here indicates iteration failure (either in-memory
         // writebatch corruption (very bad), or the client specified invalid
         // column family).  This will later on trigger bg_error_.

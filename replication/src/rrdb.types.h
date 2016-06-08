@@ -7,15 +7,13 @@
 // in this case, you need to use these tools to generate
 // type files with --gen=cpp etc. options
 //
-// !!! WARNING: not feasible for replicated service yet!!! 
-//
-// # define DSN_USE_THRIFT_SERIALIZATION
+# if defined(DSN_USE_THRIFT_SERIALIZATION)
 
-# ifdef DSN_USE_THRIFT_SERIALIZATION
+# include "rrdb_types.h"
 
+# elif defined(DSN_USE_PROTO_SERIALIZATION)
 
-# include "rrdb_types.h" 
-
+# include "rrdb.pb.h"
 
 # else // use rDSN's data encoding/decoding
 
@@ -39,23 +37,69 @@ namespace dsn { namespace apps {
         unmarshall(reader, val.value);
     }
 
+    // ---------- update_response -------------
+    struct update_response
+    {
+        int32_t error;
+        int32_t app_id;
+        int32_t pidx;
+        int64_t ballot;
+        int64_t decree;
+        int64_t seqno;
+        std::string server;
+    };
+
+    inline void marshall(::dsn::binary_writer& writer, const update_response& val)
+    {
+        marshall(writer, val.error);
+        marshall(writer, val.app_id);
+        marshall(writer, val.pidx);
+        marshall(writer, val.ballot);
+        marshall(writer, val.decree);
+        marshall(writer, val.seqno);
+        marshall(writer, val.server);
+    }
+
+    inline void unmarshall(::dsn::binary_reader& reader, /*out*/ update_response& val)
+    {
+        unmarshall(reader, val.error);
+        unmarshall(reader, val.app_id);
+        unmarshall(reader, val.pidx);
+        unmarshall(reader, val.ballot);
+        unmarshall(reader, val.decree);
+        unmarshall(reader, val.seqno);
+        unmarshall(reader, val.server);
+    }
+
     // ---------- read_response -------------
     struct read_response
     {
         int32_t error;
         ::dsn::blob value;
+        int32_t app_id;
+        int32_t pidx;
+        int64_t ballot;
+        std::string server;
     };
 
     inline void marshall(::dsn::binary_writer& writer, const read_response& val)
     {
         marshall(writer, val.error);
         marshall(writer, val.value);
+        marshall(writer, val.app_id);
+        marshall(writer, val.pidx);
+        marshall(writer, val.ballot);
+        marshall(writer, val.server);
     }
 
     inline void unmarshall(::dsn::binary_reader& reader, /*out*/ read_response& val)
     {
         unmarshall(reader, val.error);
         unmarshall(reader, val.value);
+        unmarshall(reader, val.app_id);
+        unmarshall(reader, val.pidx);
+        unmarshall(reader, val.ballot);
+        unmarshall(reader, val.server);
     }
 
 } } 

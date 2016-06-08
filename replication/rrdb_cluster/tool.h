@@ -144,6 +144,12 @@ void scanfCommand(int &Argc, std::string Argv[], int paraNum)
     char *line_read = NULL;
     rl_gets(line_read);
 
+    if ( line_read == NULL )
+    {
+        Argc = -1;
+        return;
+    }
+
     char ch;
     int index;
     int pos;

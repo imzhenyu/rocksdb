@@ -28,6 +28,7 @@ enum Tag {
   kNewFile = 7,
   // 8 was used for large value refs
   kPrevLogNumber = 9,
+  kLastFlushSeqDecree = 10,
 
   // these are new formats divergent from open source leveldb
   kNewFile2 = 100,
@@ -49,6 +50,8 @@ void VersionEdit::Clear() {
   log_number_ = 0;
   prev_log_number_ = 0;
   last_sequence_ = 0;
+  last_flush_sequence_ = 0;
+  last_flush_decree_ = 0;
   next_file_number_ = 0;
   max_column_family_ = 0;
   has_comparator_ = false;
@@ -56,6 +59,7 @@ void VersionEdit::Clear() {
   has_prev_log_number_ = false;
   has_next_file_number_ = false;
   has_last_sequence_ = false;
+  has_last_flush_seq_decree_ = false;
   has_max_column_family_ = false;
   deleted_files_.clear();
   new_files_.clear();
@@ -63,8 +67,6 @@ void VersionEdit::Clear() {
   is_column_family_add_ = 0;
   is_column_family_drop_ = 0;
   column_family_name_.clear();
-  last_flush_sequence_ = 0;
-  last_flush_decree_ = 0;
 }
 
 bool VersionEdit::EncodeTo(std::string* dst) const {
@@ -87,6 +89,11 @@ bool VersionEdit::EncodeTo(std::string* dst) const {
   if (has_last_sequence_) {
     PutVarint32(dst, kLastSequence);
     PutVarint64(dst, last_sequence_);
+  }
+  if (has_last_flush_seq_decree_) {
+    PutVarint32(dst, kLastFlushSeqDecree);
+    PutVarint64(dst, last_flush_sequence_);
+    PutVarint64(dst, last_flush_decree_);
   }
   if (has_max_column_family_) {
     PutVarint32(dst, kMaxColumnFamily);
@@ -217,6 +224,14 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
           msg = "last sequence number";
         }
         break;
+
+    case kLastFlushSeqDecree:
+      if (GetVarint64(&input, &last_flush_sequence_) && GetVarint64(&input, &last_flush_decree_)) {
+        has_last_flush_seq_decree_ = true;
+      } else {
+        msg = "last flush sequence number and decree";
+      }
+      break;
 
       case kMaxColumnFamily:
         if (GetVarint32(&input, &max_column_family_)) {
@@ -369,6 +384,12 @@ std::string VersionEdit::DebugString(bool hex_key) const {
     r.append("\n  LastSeq: ");
     AppendNumberTo(&r, last_sequence_);
   }
+  if (has_last_flush_seq_decree_) {
+    r.append("\n  LastFlushSeq: ");
+    AppendNumberTo(&r, last_flush_sequence_);
+    r.append("\n  LastFlushDecree: ");
+    AppendNumberTo(&r, last_flush_decree_);
+  }
   for (DeletedFileSet::const_iterator iter = deleted_files_.begin();
        iter != deleted_files_.end();
        ++iter) {
@@ -386,9 +407,17 @@ std::string VersionEdit::DebugString(bool hex_key) const {
     r.append(" ");
     AppendNumberTo(&r, f.fd.GetFileSize());
     r.append(" ");
+    r.append("[");
+    AppendNumberTo(&r, f.smallest_seqno);
+    r.append(" .. ");
+    AppendNumberTo(&r, f.largest_seqno);
+    r.append("]");
+    r.append(" ");
+    r.append("[");
     r.append(f.smallest.DebugString(hex_key));
     r.append(" .. ");
     r.append(f.largest.DebugString(hex_key));
+    r.append("]");
   }
   r.append("\n  ColumnFamily: ");
   AppendNumberTo(&r, column_family_);
@@ -425,6 +454,10 @@ std::string VersionEdit::DebugJSON(int edit_num, bool hex_key) const {
   }
   if (has_last_sequence_) {
     jw << "LastSeq" << last_sequence_;
+  }
+  if (has_last_flush_seq_decree_) {
+    jw << "LastFlushSeq" << last_flush_sequence_;
+    jw << "LastFlushDecree" << last_flush_decree_;
   }
 
   if (!deleted_files_.empty()) {

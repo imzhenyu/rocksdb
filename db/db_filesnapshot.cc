@@ -154,6 +154,9 @@ Status DBImpl::GetLiveFilesQuick(std::vector<std::string>& ret,
 
   mutex_.Lock();
 
+  // ATTENTION(qinzuoyan): only use default column family.
+  assert(versions_->GetColumnFamilySet()->NumberOfColumnFamilies() == 1u);
+
   // Make a set of all of the live *.sst files
   std::vector<FileDescriptor> live;
   for (auto cfd : *versions_->GetColumnFamilySet()) {
@@ -164,7 +167,7 @@ Status DBImpl::GetLiveFilesQuick(std::vector<std::string>& ret,
     // get last sequence/decree
     SequenceNumber seq;
     uint64_t d;
-    cfd->current()->GetLastSeqDecree(&seq, &d);
+    cfd->current()->GetLastFlushSeqDecree(&seq, &d);
     if (seq > *last_sequence) {
       assert(d >= *last_decree);
       *last_sequence = seq;

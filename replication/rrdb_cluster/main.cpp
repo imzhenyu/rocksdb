@@ -47,6 +47,9 @@ int main(int argc, const char* argv[])
         std::string Argv[PARA_NUM];
         scanfCommand(Argc, Argv, PARA_NUM);
 
+        if ( Argc < 0 )
+            break;
+
         if ( Argc == 0 )
             continue;
 

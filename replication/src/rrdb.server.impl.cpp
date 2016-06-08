@@ -25,6 +25,7 @@ static bool chkpt_init_from_dir(const char* name, ::dsn::replication::decree& d,
 
 rrdb_service_impl::rrdb_service_impl(::dsn::replication::replica* replica) : rrdb_service(replica), _max_checkpoint_count(3)
 {
+    _primary_address = rpc_address(dsn_primary_address()).to_string();
     _is_open = false;
     _last_seq = 0;
     _is_catchup = false;
@@ -135,9 +136,7 @@ rrdb_service_impl::checkpoint_info rrdb_service_impl::parse_checkpoints()
         }
         else if (d1.find("checkpoint") != std::string::npos)
         {
-            dwarn("invalid checkpoint directory %s, remove ...",
-                    d.c_str()
-                 );
+            dwarn("%s: invalid checkpoint directory %s, remove ...", replica_name(), d.c_str());
             utils::filesystem::remove_path(d);
         }
     }
@@ -167,11 +166,11 @@ void rrdb_service_impl::gc_checkpoints()
         {
             if (utils::filesystem::remove_path(old_cpt_dir))
             {
-                ddebug("%s: checkpoint %s removed by garbage collection", data_dir().c_str(), old_cpt_dir.c_str());
+                ddebug("%s: checkpoint %s removed by garbage collection", replica_name(), old_cpt_dir.c_str());
             }
             else
             {
-                derror("%s: remove checkpoint %s failed by garbage collection", data_dir().c_str(), old_cpt_dir.c_str());
+                derror("%s: remove checkpoint %s failed by garbage collection", replica_name(), old_cpt_dir.c_str());
                 {
                     // put back if remove failed
                     utils::auto_lock<utils::ex_lock_nr> l(_checkpoints_lock);
@@ -183,7 +182,7 @@ void rrdb_service_impl::gc_checkpoints()
         }
         else
         {
-            dwarn("%s: checkpoint %s does not exist, garbage collection ignored", data_dir().c_str(), old_cpt_dir.c_str());
+            dwarn("%s: checkpoint %s does not exist, garbage collection ignored", replica_name(), old_cpt_dir.c_str());
         }
     }
 }
@@ -191,10 +190,20 @@ void rrdb_service_impl::gc_checkpoints()
 void rrdb_service_impl::write_batch()
 {
     dassert(_batch.Count() > 0, "");
+    dassert(get_current_batch_decree() == last_committed_decree() + 1,
+            "batch_decree(%" PRId64 ") vs. commit_decree(%" PRId64 ")",
+            get_current_batch_decree(), last_committed_decree() + 1);
+
+    update_response resp;
+    resp.app_id = get_app_id();
+    resp.pidx = get_partition_index();
+    resp.ballot = get_current_batch_ballot();
+    resp.decree = get_current_batch_decree();
+    resp.server = _primary_address;
 
     auto opts = _wt_opts;
     opts.given_sequence_number = _last_seq + 1;
-    opts.given_decree = last_committed_decree() + 1;
+    opts.given_decree = resp.decree;
     auto status = _db->Write(opts, &_batch);
     if (status.ok())
     {
@@ -203,13 +212,18 @@ void rrdb_service_impl::write_batch()
     }
     else
     {
-        derror("%s failed, status = %s", __FUNCTION__, status.ToString().c_str());
+        derror("%s: %s failed, gpid=%d.%d, ballot=%" PRId64 ", decree=%" PRId64 ", seqno=%" PRIu64 ", status=%s",
+               replica_name(), __FUNCTION__, resp.app_id, resp.pidx, resp.ballot, resp.decree,
+               opts.given_sequence_number, status.ToString().c_str());
         set_physical_error(status.code());
     }
 
+    resp.error = status.code();
+    resp.seqno = opts.given_sequence_number;
     for (auto& r : _batch_repliers)
     {
-        r(status.code());
+        r(resp);
+        resp.seqno++;
     }
 
     _batch_repliers.clear();
@@ -235,11 +249,11 @@ void rrdb_service_impl::catchup_one()
     if (++_last_durable_seq == _last_seq)
     {
         _is_catchup = false;
-        ddebug("catch up done, last_seq = %" PRIu64 "", _last_seq);
+        ddebug("%s: catch up done, last_seq = %" PRIu64 "", replica_name(), _last_seq);
     }
 }
 
-void rrdb_service_impl::on_put(const update_request& update, ::dsn::replication::rpc_replication_app_replier<int>& reply)
+void rrdb_service_impl::on_put(const update_request& update, ::dsn::replication::rpc_replication_app_replier<update_response>& reply)
 {
     dassert(_is_open, "rrdb service %s is not ready", data_dir().c_str());
 
@@ -260,7 +274,7 @@ void rrdb_service_impl::on_put(const update_request& update, ::dsn::replication:
     }
 }
 
-void rrdb_service_impl::on_remove(const ::dsn::blob& key, ::dsn::replication::rpc_replication_app_replier<int>& reply)
+void rrdb_service_impl::on_remove(const ::dsn::blob& key, ::dsn::replication::rpc_replication_app_replier<update_response>& reply)
 {
     dassert(_is_open, "rrdb service %s is not ready", data_dir().c_str());
 
@@ -280,27 +294,6 @@ void rrdb_service_impl::on_remove(const ::dsn::blob& key, ::dsn::replication::rp
     }
 }
 
-void rrdb_service_impl::on_merge(const update_request& update, ::dsn::replication::rpc_replication_app_replier<int>& reply)
-{
-    dassert(_is_open, "rrdb service %s is not ready", data_dir().c_str());
-
-    if (_is_catchup)
-    {
-        dassert(reply.is_empty(), "catchup only happens during initialization");
-        catchup_one();
-        return;
-    }
-
-    rocksdb::Slice skey(update.key.data(), update.key.length());
-    rocksdb::Slice svalue(update.value.data(), update.value.length());
-    _batch.Merge(skey, svalue);
-    _batch_repliers.push_back(reply);
-    if (get_current_batch_state() != BS_BATCH)
-    {
-        write_batch();
-    }
-}
-
 void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_replication_app_replier<read_response>& reply)
 {
     dassert(_is_open, "rrdb service %s is not ready", data_dir().c_str());
@@ -311,9 +304,13 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     rocksdb::Status status = _db->Get(_rd_opts, skey, value);
     if (!status.ok() && !status.IsNotFound())
     {
-        derror("%s failed, status = %s", __FUNCTION__, status.ToString().c_str());
+        derror("%s: %s failed, status = %s", replica_name(), __FUNCTION__, status.ToString().c_str());
     }
     resp.error = status.code();
+    resp.app_id = get_app_id();
+    resp.pidx = get_partition_index();
+    resp.ballot = get_ballot();
+    resp.server = _primary_address;
     if (status.ok() && value->size() > 0)
     {
         // tricy code to avoid memory copy
@@ -330,6 +327,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
 ::dsn::error_code rrdb_service_impl::open(bool create_new)
 {
     dassert(!_is_open, "rrdb service %s is already opened", data_dir().c_str());
+    ddebug("%s: start to open app %s, create_new = %s", replica_name(), data_dir().c_str(), create_new ? "true" : "false");
 
     rocksdb::Options opts = _db_opts;
     opts.create_if_missing = create_new;
@@ -341,12 +339,13 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
         auto& dir = data_dir();
         if (!utils::filesystem::remove_path(dir))
         {
-            derror("remove old directory %s failed", dir.c_str());
+            derror("%s: remove old directory %s failed", replica_name(), dir.c_str());
             return ERR_FILE_OPERATION_FAILED;
         }
+        dwarn("%s: cleared replica dir %s", replica_name(), dir.c_str());
         if (!utils::filesystem::create_directory(dir))
         {
-            derror("create new directory %s failed", dir.c_str());
+            derror("%s: create new directory %s failed", replica_name(), dir.c_str());
             return ERR_FILE_OPERATION_FAILED;
         }
     }
@@ -378,9 +377,9 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
             _is_catchup = true;
         }
 
-        ddebug("open app %s: last_committed/durable_decree = <%" PRId64 ", %" PRId64 ">, "
+        ddebug("%s: open app succeed, last_committed/durable_decree = <%" PRId64 ", %" PRId64 ">, "
                 "last_seq = %" PRIu64 ", last_durable_seq = %" PRIu64 ", is_catch_up = %s",
-                data_dir().c_str(), last_committed_decree(), last_durable_decree(),
+                replica_name(), last_committed_decree(), last_durable_decree(),
                 _last_seq, _last_durable_seq, _is_catchup ? "true" : "false"
               );
 
@@ -389,10 +388,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     }
     else
     {
-        derror("open rocksdb %s failed, status = %s",
-                path.c_str(),
-                status.ToString().c_str()
-              );
+        derror("%s: open app failed, status = %s", replica_name(), status.ToString().c_str());
         return ERR_LOCAL_APP_FAILURE;
     }
 }
@@ -449,10 +445,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     auto status = rocksdb::Checkpoint::Create(_db, &chkpt);
     if (!status.ok())
     {
-        derror("%s: create Checkpoint object failed, status = %s",
-                data_dir().c_str(),
-                status.ToString().c_str()
-              );
+        derror("%s: create Checkpoint object failed, status = %s", replica_name(), status.ToString().c_str());
         _is_checkpointing = false;
         return ERR_LOCAL_APP_FAILURE;
     }
@@ -466,30 +459,32 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     auto chkpt_dir = utils::filesystem::path_combine(data_dir(), dir);
     if (utils::filesystem::directory_exists(chkpt_dir))
     {
-        dwarn("%s: checkpoint directory %s already exist, remove it first",
-                data_dir().c_str(),
-                chkpt_dir.c_str()
-             );
+        dwarn("%s: checkpoint directory %s already exist, remove it first", replica_name(), chkpt_dir.c_str());
         if (!utils::filesystem::remove_path(chkpt_dir))
         {
-            derror("%s: remove old checkpoint directory %s failed",
-                    data_dir().c_str(),
-                    chkpt_dir.c_str()
-                  );
+            derror("%s: remove old checkpoint directory %s failed", replica_name(), chkpt_dir.c_str());
+            delete chkpt;
+            chkpt = nullptr;
             _is_checkpointing = false;
             return ERR_FILE_OPERATION_FAILED;
         }
     }
 
     status = chkpt->CreateCheckpoint(chkpt_dir);
-    delete chkpt;
-    chkpt = nullptr;
     if (!status.ok())
     {
-        derror("%s: create checkpoint failed, status = %s",
-                data_dir().c_str(),
-                status.ToString().c_str()
-              );
+        // sometimes may fail, try again
+        dwarn("%s: create checkpoint failed, status = %s, try again", replica_name(), status.ToString().c_str());
+        status = chkpt->CreateCheckpoint(chkpt_dir);
+    }
+
+    // destroy Checkpoint object
+    delete chkpt;
+    chkpt = nullptr;
+
+    if (!status.ok())
+    {
+        derror("%s: create checkpoint failed, status = %s", replica_name(), status.ToString().c_str());
         utils::filesystem::remove_path(chkpt_dir);
         _is_checkpointing = false;
         return ERR_LOCAL_APP_FAILURE;
@@ -502,10 +497,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
         _last_durable_decree = _checkpoints.back().d;
     }
 
-    ddebug("%s: create checkpoint %s succeed",
-            data_dir().c_str(),
-            chkpt_dir.c_str()
-          );
+    ddebug("%s: create checkpoint %s succeed", replica_name(), chkpt_dir.c_str());
 
     gc_checkpoints();
 
@@ -528,10 +520,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     auto status = rocksdb::Checkpoint::Create(_db, &chkpt);
     if (!status.ok())
     {
-        derror("%s: create Checkpoint object failed, status = %s",
-                data_dir().c_str(),
-                status.ToString().c_str()
-              );
+        derror("%s: create Checkpoint object failed, status = %s", replica_name(), status.ToString().c_str());
         _is_checkpointing = false;
         return ERR_LOCAL_APP_FAILURE;
     }
@@ -553,16 +542,10 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     std::string tmp_dir = utils::filesystem::path_combine(data_dir(), buf);
     if (utils::filesystem::directory_exists(tmp_dir))
     {
-        dwarn("%s: tmp directory %s already exist, remove it first",
-                data_dir().c_str(),
-                tmp_dir.c_str()
-             );
+        dwarn("%s: tmp directory %s already exist, remove it first", replica_name(), tmp_dir.c_str());
         if (!utils::filesystem::remove_path(tmp_dir))
         {
-            derror("%s: remove old tmp directory %s failed",
-                    data_dir().c_str(),
-                    tmp_dir.c_str()
-                  );
+            derror("%s: remove old tmp directory %s failed", replica_name(), tmp_dir.c_str());
             _is_checkpointing = false;
             return ERR_FILE_OPERATION_FAILED;
         }
@@ -573,10 +556,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     chkpt = nullptr;
     if (!status.ok())
     {
-        dwarn("%s: async create checkpoint failed, status = %s",
-                data_dir().c_str(),
-                status.ToString().c_str()
-              );
+        dwarn("%s: async create checkpoint failed, status = %s", replica_name(), status.ToString().c_str());
         utils::filesystem::remove_path(tmp_dir);
         _is_checkpointing = false;
         return status.IsTryAgain() ? ERR_TRY_AGAIN : ERR_LOCAL_APP_FAILURE;
@@ -589,16 +569,10 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     auto chkpt_dir = utils::filesystem::path_combine(data_dir(), dir);
     if (utils::filesystem::directory_exists(chkpt_dir))
     {
-        dwarn("%s: checkpoint directory %s already exist, remove it first",
-                data_dir().c_str(),
-                chkpt_dir.c_str()
-             );
+        dwarn("%s: checkpoint directory %s already exist, remove it first", replica_name(), chkpt_dir.c_str());
         if (!utils::filesystem::remove_path(chkpt_dir))
         {
-            derror("%s: remove old checkpoint directory %s failed",
-                    data_dir().c_str(),
-                    chkpt_dir.c_str()
-                  );
+            derror("%s: remove old checkpoint directory %s failed", replica_name(), chkpt_dir.c_str());
             utils::filesystem::remove_path(tmp_dir);
             _is_checkpointing = false;
             return ERR_FILE_OPERATION_FAILED;
@@ -607,11 +581,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
 
     if (!utils::filesystem::rename_path(tmp_dir, chkpt_dir))
     {
-        derror("%s: rename checkpoint directory from %s to %s failed",
-                data_dir().c_str(),
-                tmp_dir.c_str(),
-                chkpt_dir.c_str()
-              );
+        derror("%s: rename checkpoint directory from %s to %s failed", replica_name(), tmp_dir.c_str(), chkpt_dir.c_str());
         utils::filesystem::remove_path(tmp_dir);
         _is_checkpointing = false;
         return ERR_FILE_OPERATION_FAILED;
@@ -624,10 +594,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
         _last_durable_decree = _checkpoints.back().d;
     }
 
-    ddebug("%s: async create checkpoint %s succeed",
-            data_dir().c_str(),
-            chkpt_dir.c_str()
-          );
+    ddebug("%s: async create checkpoint %s succeed", replica_name(), chkpt_dir.c_str());
 
     gc_checkpoints();
 
@@ -651,7 +618,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
 
     if (ci.d == 0)
     {
-        derror("%s: no checkpoint found", data_dir().c_str());
+        derror("%s: no checkpoint found", replica_name());
         return ERR_OBJECT_NOT_FOUND;
     }
 
@@ -660,7 +627,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     auto succ = utils::filesystem::get_subfiles(chkpt_dir, state.files, true);
     if (!succ)
     {
-        derror("%s: list files in checkpoint dir %s failed", data_dir().c_str(), chkpt_dir.c_str());
+        derror("%s: list files in checkpoint dir %s failed", replica_name(), chkpt_dir.c_str());
         return ERR_FILE_OPERATION_FAILED;
     }
 
@@ -672,9 +639,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     state.from_decree_excluded = 0;
     state.to_decree_included = ci.d;
 
-    ddebug("%s: get checkpoint succeed, from_decree_excluded = 0, to_decree_included = %" PRId64,
-            data_dir().c_str(),
-            state.to_decree_included);
+    ddebug("%s: get checkpoint succeed, from_decree_excluded = 0, to_decree_included = %" PRId64, replica_name(), state.to_decree_included);
     return ERR_OK;
 }
 
@@ -719,7 +684,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
         err = close(true);
         if (err != ERR_OK)
         {
-            derror("close rocksdb %s failed, err = %s", data_dir().c_str(), err.to_string());
+            derror("%s: close rocksdb %s failed, err = %s", replica_name(), data_dir().c_str(), err.to_string());
             return err;
         }
     }
@@ -727,7 +692,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     // clear data dir
     if (!utils::filesystem::remove_path(data_dir()))
     {
-        derror("clear data directory %s failed", data_dir().c_str());
+        derror("%s: clear data directory %s failed", replica_name(), data_dir().c_str());
         return ERR_FILE_OPERATION_FAILED;
     }
 
@@ -737,7 +702,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
         // create data dir
         if (!utils::filesystem::create_directory(data_dir()))
         {
-            derror("create data directory %s failed", data_dir().c_str());
+            derror("%s: create data directory %s failed", replica_name(), data_dir().c_str());
             return ERR_FILE_OPERATION_FAILED;
         }
 
@@ -746,7 +711,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
         std::string new_dir = utils::filesystem::path_combine(data_dir(), "rdb");
         if (!utils::filesystem::rename_path(learn_dir, new_dir))
         {
-            derror("rename %s to %s failed", learn_dir.c_str(), new_dir.c_str());
+            derror("%s: rename %s to %s failed", replica_name(), learn_dir.c_str(), new_dir.c_str());
             return ERR_FILE_OPERATION_FAILED;
         }
 
@@ -754,13 +719,13 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
     }
     else
     {
-        dwarn("%s: apply empty checkpoint, create new rocksdb", data_dir().c_str());
+        dwarn("%s: apply empty checkpoint, create new rocksdb", replica_name());
         err = open(true);
     }
 
     if (err != ERR_OK)
     {
-        derror("open rocksdb %s failed, err = %s", data_dir().c_str(), err.to_string());
+        derror("%s: open rocksdb %s failed, err = %s", replica_name(), data_dir().c_str(), err.to_string());
         return err;
     }
 
@@ -794,9 +759,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::replication::rpc_r
                );
     }
 
-    ddebug("%s: apply checkpoint succeed, last_committed_decree = %" PRId64,
-            data_dir().c_str(),
-            last_committed_decree());
+    ddebug("%s: apply checkpoint succeed, last_committed_decree = %" PRId64, replica_name(), last_committed_decree());
     return ERR_OK;
 }
 }

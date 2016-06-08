@@ -12,9 +12,8 @@ namespace dsn {
             rrdb_service_impl(::dsn::replication::replica* replica);
 
             // the following methods may set physical error if internal error occurs
-            virtual void on_put(const update_request& update, ::dsn::replication::rpc_replication_app_replier<int>& reply) override;
-            virtual void on_remove(const ::dsn::blob& key, ::dsn::replication::rpc_replication_app_replier<int>& reply) override;
-            virtual void on_merge(const update_request& update, ::dsn::replication::rpc_replication_app_replier<int>& reply) override;
+            virtual void on_put(const update_request& update, ::dsn::replication::rpc_replication_app_replier<update_response>& reply) override;
+            virtual void on_remove(const ::dsn::blob& key, ::dsn::replication::rpc_replication_app_replier<update_response>& reply) override;
             virtual void on_get(const ::dsn::blob& key, ::dsn::replication::rpc_replication_app_replier<read_response>& reply) override;
 
             // open the db
@@ -108,8 +107,9 @@ namespace dsn {
 
         private:
             rocksdb::DB           *_db;
+            std::string           _primary_address;
             rocksdb::WriteBatch   _batch;
-            std::vector< ::dsn::replication::rpc_replication_app_replier<int>> _batch_repliers;
+            std::vector< ::dsn::replication::rpc_replication_app_replier<update_response>> _batch_repliers;
             rocksdb::Options      _db_opts;
             rocksdb::WriteOptions _wt_opts;
             rocksdb::ReadOptions  _rd_opts;

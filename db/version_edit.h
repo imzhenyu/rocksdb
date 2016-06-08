@@ -183,6 +183,22 @@ class VersionEdit {
     return last_sequence_;
   }
 
+  bool HasLastFlushSeqDecree() const {
+    return has_last_flush_seq_decree_;
+  }
+  void GetLastFlushSeqDecree(SequenceNumber* sequence, uint64_t* decree) {
+    *sequence = last_flush_sequence_;
+    *decree = last_flush_decree_;
+  }
+  void UpdateLastFlushSeqDecree(SequenceNumber sequence, uint64_t decree) {
+    if (sequence > last_flush_sequence_) {
+      assert(decree >= last_flush_decree_);
+      last_flush_sequence_ = sequence;
+      last_flush_decree_ = decree;
+      has_last_flush_seq_decree_ = true;
+    }
+  }
+
   // Add the specified file at the specified number.
   // REQUIRES: This version has not been saved (see VersionSet::SaveTo)
   // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
@@ -254,19 +270,6 @@ class VersionEdit {
   std::string DebugString(bool hex_key = false) const;
   std::string DebugJSON(int edit_num, bool hex_key = false) const;
 
-  void GetLastSeqDecree(SequenceNumber* sequence, uint64_t* decree) {
-    *sequence = last_flush_sequence_;
-    *decree = last_flush_decree_;
-  }
-
-  void UpdateLastSeqDecree(SequenceNumber sequence, uint64_t decree) {
-    if (sequence > last_flush_sequence_) {
-      assert(decree >= last_flush_decree_);
-      last_flush_sequence_ = sequence;
-      last_flush_decree_ = decree;
-    }
-  }
-
  private:
   friend class VersionSet;
   friend class Version;
@@ -280,11 +283,16 @@ class VersionEdit {
   uint64_t next_file_number_;
   uint32_t max_column_family_;
   SequenceNumber last_sequence_;
+  // Used to mark the last sequence/decree of flushed memtables.
+  SequenceNumber last_flush_sequence_;
+  uint64_t last_flush_decree_;
+
   bool has_comparator_;
   bool has_log_number_;
   bool has_prev_log_number_;
   bool has_next_file_number_;
   bool has_last_sequence_;
+  bool has_last_flush_seq_decree_;
   bool has_max_column_family_;
 
   DeletedFileSet deleted_files_;
@@ -299,10 +307,6 @@ class VersionEdit {
   bool is_column_family_drop_;
   bool is_column_family_add_;
   std::string column_family_name_;
-
-  // Used to mark the last sequence/decree of flushed memtables.
-  SequenceNumber last_flush_sequence_;
-  uint64_t last_flush_decree_;
 };
 
 }  // namespace rocksdb

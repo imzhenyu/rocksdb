@@ -1,4 +1,4 @@
-set(MY_PROJ_NAME "rrdb")
+set(MY_PROJ_NAME "rrdb.test.sample")
 project(${MY_PROJ_NAME} C CXX)
 
 # Source files under CURRENT project directory will be automatically included.
@@ -10,27 +10,21 @@ set(MY_PROJ_SRC "")
 # "GLOB" for non-recursive search
 set(MY_SRC_SEARCH_MODE "GLOB")
 
-set(MY_PROJ_INC_PATH "../../include")
+set(MY_PROJ_INC_PATH "../lib")
 
-set(MY_PROJ_LIBS 
-    dsn.replication 
-    dsn.replication.meta_server 
-    dsn.replication.clientlib 
+set(MY_PROJ_LIBS
+    dsn.replication
+    dsn.replication.meta_server
+    dsn.replication.clientlib
     dsn.failure_detector
-    dsn.replication.zookeeper_provider 
+    dsn.replication.zookeeper_provider
     zookeeper_mt
-    thrift
+    pegasus.test
     )
-
-if (UNIX)
-	set(MY_PROJ_LIBS rocksdb ${MY_PROJ_LIBS} z bz2 snappy rt aio pthread)
-else()
-	set(MY_PROJ_LIBS rocksdblib ${MY_PROJ_LIBS} rpcrt4)
-endif()
 
 set(MY_PROJ_LIB_PATH "../..")
 
-set(MY_BOOST_PACKAGES system)
+set(MY_BOOST_PACKAGES system filesystem)
 
 file(GLOB
     RES_FILES

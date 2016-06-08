@@ -7,11 +7,6 @@ write = true
 [function.rrdb.remove]
 write = true
 
-[function.rrdb.merge]
-write = true
-
 [function.rrdb.get]
 write = false
-
-
 

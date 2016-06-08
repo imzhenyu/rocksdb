@@ -221,7 +221,8 @@ function run_stop_onebox()
         esac
         shift
     done
-    ps -ef | grep rrdb | grep app_list | grep -v grep | awk '{print $2}' | xargs kill &>/dev/null
+    ps -ef | grep rrdb | grep 'app_list meta@' | grep -v grep | awk '{print $2}' | xargs kill &>/dev/null
+    ps -ef | grep rrdb | grep 'app_list replica@' | grep -v grep | awk '{print $2}' | xargs kill &>/dev/null
 }
 
 #####################

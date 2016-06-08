@@ -12,7 +12,7 @@ int main()
         std::cerr << "init failed" << std::endl;
         return -1;
     }
-    irrdb_client* client = rrdb_client_factory::get_client("a1");
+    irrdb_client* client = rrdb_client_factory::get_client("rrdb.instance0");
     int ret = client->set("k1", "s1", "v1");
     std::cout<< "set key error=" << ret << std::endl;
 

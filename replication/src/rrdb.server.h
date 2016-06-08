@@ -23,24 +23,17 @@ public:
 protected:
     // all service handlers to be implemented further
     // RPC_RRDB_RRDB_PUT 
-    virtual void on_put(const update_request& update, ::dsn::replication::rpc_replication_app_replier<int32_t>& reply)
+    virtual void on_put(const update_request& update, ::dsn::replication::rpc_replication_app_replier<update_response>& reply)
     {
         std::cout << "... exec RPC_RRDB_RRDB_PUT ... (not implemented) " << std::endl;
-        int32_t resp;
+        update_response resp;
         reply(resp);
     }
     // RPC_RRDB_RRDB_REMOVE 
-    virtual void on_remove(const ::dsn::blob& key, ::dsn::replication::rpc_replication_app_replier<int32_t>& reply)
+    virtual void on_remove(const ::dsn::blob& key, ::dsn::replication::rpc_replication_app_replier<update_response>& reply)
     {
         std::cout << "... exec RPC_RRDB_RRDB_REMOVE ... (not implemented) " << std::endl;
-        int32_t resp;
-        reply(resp);
-    }
-    // RPC_RRDB_RRDB_MERGE 
-    virtual void on_merge(const update_request& update, ::dsn::replication::rpc_replication_app_replier<int32_t>& reply)
-    {
-        std::cout << "... exec RPC_RRDB_RRDB_MERGE ... (not implemented) " << std::endl;
-        int32_t resp;
+        update_response resp;
         reply(resp);
     }
     // RPC_RRDB_RRDB_GET 
@@ -56,7 +49,6 @@ public:
     {
         this->register_async_rpc_handler(RPC_RRDB_RRDB_PUT, "put", &rrdb_service::on_put);
         this->register_async_rpc_handler(RPC_RRDB_RRDB_REMOVE, "remove", &rrdb_service::on_remove);
-        this->register_async_rpc_handler(RPC_RRDB_RRDB_MERGE, "merge", &rrdb_service::on_merge);
         this->register_async_rpc_handler(RPC_RRDB_RRDB_GET, "get", &rrdb_service::on_get);
     }
 
@@ -64,7 +56,6 @@ public:
     {
         this->unregister_rpc_handler(RPC_RRDB_RRDB_PUT);
         this->unregister_rpc_handler(RPC_RRDB_RRDB_REMOVE);
-        this->unregister_rpc_handler(RPC_RRDB_RRDB_MERGE);
         this->unregister_rpc_handler(RPC_RRDB_RRDB_GET);
     }
 };

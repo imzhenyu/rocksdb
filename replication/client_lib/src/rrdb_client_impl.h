@@ -44,20 +44,23 @@ public:
         const std::string& hashkey,
         const std::string& sortkey,
         const std::string& value,
-        int timeout_milliseconds = 5000
+        int timeout_milliseconds = 5000,
+        internal_info* info = NULL
         ) override;
 
     virtual int get(
         const std::string& hashkey,
         const std::string& sortkey,
         std::string& value,
-        int timeout_milliseconds = 5000
+        int timeout_milliseconds = 5000,
+        internal_info* info = NULL
         ) override;
 
     virtual int del(
         const std::string& hashkey,
         const std::string& sortkey,
-        int timeout_milliseconds = 5000
+        int timeout_milliseconds = 5000,
+        internal_info* info = NULL
         ) override;
 
     virtual const char* get_error_string(int error_code) const override;

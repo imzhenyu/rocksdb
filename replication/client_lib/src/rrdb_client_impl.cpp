@@ -63,7 +63,8 @@ int rrdb_client_impl::set(
         const std::string& hash_key,
         const std::string& sort_key,
         const std::string& value,
-        int timeout_milliseconds
+        int timeout_milliseconds,
+        internal_info* info
         )
 {
     // check params
@@ -74,7 +75,29 @@ int rrdb_client_impl::set(
     rrdb_generate_key(req.key, hash_key, sort_key);
     req.value.assign(value.c_str(), 0, value.size());
     auto pr = _client.put_sync(req, std::chrono::milliseconds(timeout_milliseconds));
-    return get_client_error(pr.first == ERR_OK ? get_rocksdb_server_error(pr.second) : pr.first.get());
+    if (info != nullptr)
+    {
+        if (pr.first == ERR_OK)
+        {
+            info->app_id = pr.second.app_id;
+            info->pidx = pr.second.pidx;
+            info->ballot = pr.second.ballot;
+            info->decree = pr.second.decree;
+            info->seqno = pr.second.seqno;
+            info->server = pr.second.server;
+        }
+        else
+        {
+            info->app_id = _client.get_app_id() > 0 ?
+                        _client.get_app_id() : -1;
+            info->pidx = _client.get_partition_count() > 0 ?
+                        _client.get_partition_index(_client.get_partition_count(), _client.get_key_hash(req)) : -1;
+            info->ballot = -1;
+            info->decree = -1;
+            info->seqno = -1;
+        }
+    }
+    return get_client_error(pr.first == ERR_OK ? get_rocksdb_server_error(pr.second.error) : pr.first.get());
 }
 
 
@@ -82,7 +105,8 @@ int rrdb_client_impl::get(
         const std::string& hash_key,
         const std::string& sort_key,
         std::string& value,
-        int timeout_milliseconds
+        int timeout_milliseconds,
+        internal_info* info
         )
 {
     // check params
@@ -92,15 +116,38 @@ int rrdb_client_impl::get(
     dsn::blob req;
     rrdb_generate_key(req, hash_key, sort_key);
     auto pr = _client.get_sync(req, std::chrono::milliseconds(timeout_milliseconds));
-    if(pr.first == ERR_OK)
+    if(pr.first == ERR_OK && pr.second.error == 0)
         value.assign(pr.second.value.data(), pr.second.value.length());
+    if (info != nullptr)
+    {
+        if (pr.first == ERR_OK)
+        {
+            info->app_id = pr.second.app_id;
+            info->pidx = pr.second.pidx;
+            info->ballot = pr.second.ballot;
+            info->decree = -1;
+            info->seqno = -1;
+            info->server = pr.second.server;
+        }
+        else
+        {
+            info->app_id = _client.get_app_id() > 0 ?
+                        _client.get_app_id() : -1;
+            info->pidx = _client.get_partition_count() > 0 ?
+                        _client.get_partition_index(_client.get_partition_count(), _client.get_key_hash(req)) : -1;
+            info->ballot = -1;
+            info->decree = -1;
+            info->seqno = -1;
+        }
+    }
     return get_client_error(pr.first == ERR_OK ? get_rocksdb_server_error(pr.second.error) : pr.first.get());
 }
 
 int rrdb_client_impl::del(
         const std::string& hash_key,
         const std::string& sort_key,
-        int timeout_milliseconds
+        int timeout_milliseconds,
+        internal_info* info
         )
 {
     // check params
@@ -110,7 +157,29 @@ int rrdb_client_impl::del(
     dsn::blob req;
     rrdb_generate_key(req, hash_key, sort_key);
     auto pr = _client.remove_sync(req, std::chrono::milliseconds(timeout_milliseconds));
-    return get_client_error(pr.first == ERR_OK ? get_rocksdb_server_error(pr.second) : pr.first.get());
+    if (info != nullptr)
+    {
+        if (pr.first == ERR_OK)
+        {
+            info->app_id = pr.second.app_id;
+            info->pidx = pr.second.pidx;
+            info->ballot = pr.second.ballot;
+            info->decree = pr.second.decree;
+            info->seqno = pr.second.seqno;
+            info->server = pr.second.server;
+        }
+        else
+        {
+            info->app_id = _client.get_app_id() > 0 ?
+                        _client.get_app_id() : -1;
+            info->pidx = _client.get_partition_count() > 0 ?
+                        _client.get_partition_index(_client.get_partition_count(), _client.get_key_hash(req)) : -1;
+            info->ballot = -1;
+            info->decree = -1;
+            info->seqno = -1;
+        }
+    }
+    return get_client_error(pr.first == ERR_OK ? get_rocksdb_server_error(pr.second.error) : pr.first.get());
 }
 
 const char* rrdb_client_impl::get_error_string(int error_code) const
