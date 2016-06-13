@@ -50,7 +50,6 @@ class CheckpointImpl : public Checkpoint {
   // Useful when there is only one column family in the RocksDB.
   using Checkpoint::CreateCheckpointQuick;
   virtual Status CreateCheckpointQuick(const std::string& checkpoint_dir,
-                                       SequenceNumber* sequence,
                                        uint64_t* decree) override;
 
  private:
@@ -67,7 +66,6 @@ Status Checkpoint::CreateCheckpoint(const std::string& checkpoint_dir) {
 }
 
 Status Checkpoint::CreateCheckpointQuick(const std::string& checkpoint_dir,
-                                         SequenceNumber* sequence,
                                          uint64_t* decree) {
   return Status::NotSupported("");
 }
@@ -310,7 +308,6 @@ static Status ModifyMenifestFileLastSeq(Env* env,
 }
 
 Status CheckpointImpl::CreateCheckpointQuick(const std::string& checkpoint_dir,
-                                             SequenceNumber* sequence,
                                              uint64_t* decree) {
   Status s;
   std::vector<std::string> live_files;
@@ -335,8 +332,7 @@ Status CheckpointImpl::CreateCheckpointQuick(const std::string& checkpoint_dir,
   }
   if (s.ok()) {
     // check if can do checkpoint now
-    if (last_sequence == 0 || last_decree == 0
-        || last_sequence <= *sequence || last_decree <= *decree) {
+    if (last_sequence == 0 || last_decree == 0 || last_decree <= *decree) {
       s = Status::TryAgain("can not generate checkpoint currently");
     }
   }
@@ -434,11 +430,10 @@ Status CheckpointImpl::CreateCheckpointQuick(const std::string& checkpoint_dir,
   }
 
   // here we know that we succeeded and installed the new snapshot
-  Log(db_->GetOptions().info_log, "Snapshot DONE. All is good");
-  Log(db_->GetOptions().info_log, "Snapshot sequence number: %" PRIu64,
-      last_sequence);
+  Log(db_->GetOptions().info_log,
+      "Snapshot DONE. All is good. seqno: %" PRIu64 ", decree: %" PRIu64 "",
+      last_sequence, last_decree);
 
-  *sequence = last_sequence;
   *decree = last_decree;
   return s;
 }

@@ -1,144 +1,158 @@
 # pragma once
-# include <dsn/dist/replication.h>
 # include "rrdb.code.definition.h"
 # include <iostream>
 
-namespace dsn { namespace apps { 
 
+namespace dsn { namespace apps { 
 class rrdb_client 
-    : public ::dsn::replication::replication_app_client_base
+    : public virtual ::dsn::clientlet
 {
 public:
-    using replication_app_client_base::replication_app_client_base;
+    rrdb_client() { }
+    explicit rrdb_client(::dsn::rpc_address server) { _server = server; }
     virtual ~rrdb_client() {}
-
-    // from requests to partition index
-    // PLEASE DO RE-DEFINE THEM IN A SUB CLASS!!!
-    virtual uint64_t get_key_hash(const update_request& key) { return 0; }
-    virtual uint64_t get_key_hash(const ::dsn::blob& key) { return 0; }
-
+    
+ 
     // ---------- call RPC_RRDB_RRDB_PUT ------------
-    // - synchronous  
-    std::pair< ::dsn::error_code, update_response> put_sync(
-        const update_request& update,
-        std::chrono::milliseconds timeout = std::chrono::milliseconds(0)
+    // - synchronous 
+    std::pair< ::dsn::error_code, int> put_sync(
+        const update_request& args,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(0), 
+        uint64_t hash = 0,
+        dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
-        return dsn::rpc::wait_and_unwrap<update_response>(
-            ::dsn::replication::replication_app_client_base::write(
-                get_key_hash(update),
+        return ::dsn::rpc::wait_and_unwrap< int>(
+            ::dsn::rpc::call(
+                server_addr.unwrap_or(_server),
                 RPC_RRDB_RRDB_PUT,
-                update,
-                this,
+                args,
+                nullptr,
                 empty_callback,
+                hash,
                 timeout,
                 0
                 )
             );
     }
- 
-    // - asynchronous with on-stack update_request and update_response 
+    
+    // - asynchronous with on-stack update_request and int  
     template<typename TCallback>
     ::dsn::task_ptr put(
-        const update_request& update,
-        TCallback&& callback,
-        std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
-        int reply_hash = 0
-        )
-    {
-        return ::dsn::replication::replication_app_client_base::write(
-            get_key_hash(update),
-            RPC_RRDB_RRDB_PUT,
-            update,
-            this,
-            std::forward<TCallback>(callback),
-            timeout,
-            reply_hash
-            );
-    }
-
-    // ---------- call RPC_RRDB_RRDB_REMOVE ------------
-    // - synchronous  
-    std::pair< ::dsn::error_code, update_response> remove_sync(
-        const ::dsn::blob& key,
-        std::chrono::milliseconds timeout = std::chrono::milliseconds(0)
-        )
-    {
-        return dsn::rpc::wait_and_unwrap<update_response>(
-            ::dsn::replication::replication_app_client_base::write(
-                get_key_hash(key),
-                RPC_RRDB_RRDB_REMOVE,
-                key,
-                this,
-                empty_callback,
-                timeout,
-                0
-                )
-            );
-    }
- 
-    // - asynchronous with on-stack ::dsn::blob and update_response 
-    template<typename TCallback>
-    ::dsn::task_ptr remove(
-        const ::dsn::blob& key,
-        TCallback&& callback,
-        std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
-        int reply_hash = 0
-        )
-    {
-        return ::dsn::replication::replication_app_client_base::write(
-            get_key_hash(key),
-            RPC_RRDB_RRDB_REMOVE,
-            key,
-            this,
-            std::forward<TCallback>(callback),
-            timeout,
-            reply_hash
-            );
-    }
-
-    // ---------- call RPC_RRDB_RRDB_GET ------------
-    // - synchronous  
-    std::pair< ::dsn::error_code, read_response> get_sync(
-        const ::dsn::blob& key,
-        std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
-        ::dsn::replication::read_semantic semantic = ::dsn::replication::read_semantic::ReadLastUpdate
-        )
-    {
-        return dsn::rpc::wait_and_unwrap<read_response>(
-            ::dsn::replication::replication_app_client_base::read(
-                get_key_hash(key),
-                RPC_RRDB_RRDB_GET,
-                key,
-                this,
-                empty_callback,
-                timeout,
-                0,
-                semantic
-                )
-            );
-    }
- 
-    // - asynchronous with on-stack ::dsn::blob and read_response 
-    template<typename TCallback>
-    ::dsn::task_ptr get(
-        const ::dsn::blob& key,
+        const update_request& args,
         TCallback&& callback,
         std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
         int reply_hash = 0,
-        ::dsn::replication::read_semantic semantic = ::dsn::replication::read_semantic::ReadLastUpdate
+        uint64_t hash = 0,
+        dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
-        return ::dsn::replication::replication_app_client_base::read(
-            get_key_hash(key),
-            RPC_RRDB_RRDB_GET,
-            key,
-            this,
-            std::forward<TCallback>(callback),
-            timeout,
-            reply_hash,
-            semantic
+        return ::dsn::rpc::call(
+                    server_addr.unwrap_or(_server), 
+                    RPC_RRDB_RRDB_PUT, 
+                    args,
+                    this,
+                    std::forward<TCallback>(callback),
+                    hash, 
+                    timeout, 
+                    reply_hash
+                    );
+    }
+ 
+    // ---------- call RPC_RRDB_RRDB_REMOVE ------------
+    // - synchronous 
+    std::pair< ::dsn::error_code, int> remove_sync(
+        const ::dsn::blob& args,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(0), 
+        uint64_t hash = 0,
+        dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
+        )
+    {
+        return ::dsn::rpc::wait_and_unwrap< int>(
+            ::dsn::rpc::call(
+                server_addr.unwrap_or(_server),
+                RPC_RRDB_RRDB_REMOVE,
+                args,
+                nullptr,
+                empty_callback,
+                hash,
+                timeout,
+                0
+                )
             );
     }
+    
+    // - asynchronous with on-stack ::dsn::blob and int  
+    template<typename TCallback>
+    ::dsn::task_ptr remove(
+        const ::dsn::blob& args,
+        TCallback&& callback,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
+        int reply_hash = 0,
+        uint64_t hash = 0,
+        dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
+        )
+    {
+        return ::dsn::rpc::call(
+                    server_addr.unwrap_or(_server), 
+                    RPC_RRDB_RRDB_REMOVE, 
+                    args,
+                    this,
+                    std::forward<TCallback>(callback),
+                    hash, 
+                    timeout, 
+                    reply_hash
+                    );
+    }
+ 
+    // ---------- call RPC_RRDB_RRDB_GET ------------
+    // - synchronous 
+    std::pair< ::dsn::error_code, read_response> get_sync(
+        const ::dsn::blob& args,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(0), 
+        uint64_t hash = 0,
+        dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
+        )
+    {
+        return ::dsn::rpc::wait_and_unwrap< read_response>(
+            ::dsn::rpc::call(
+                server_addr.unwrap_or(_server),
+                RPC_RRDB_RRDB_GET,
+                args,
+                nullptr,
+                empty_callback,
+                hash,
+                timeout,
+                0
+                )
+            );
+    }
+    
+    // - asynchronous with on-stack ::dsn::blob and read_response  
+    template<typename TCallback>
+    ::dsn::task_ptr get(
+        const ::dsn::blob& args,
+        TCallback&& callback,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
+        int reply_hash = 0,
+        uint64_t hash = 0,
+        dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
+        )
+    {
+        return ::dsn::rpc::call(
+                    server_addr.unwrap_or(_server), 
+                    RPC_RRDB_RRDB_GET, 
+                    args,
+                    this,
+                    std::forward<TCallback>(callback),
+                    hash, 
+                    timeout, 
+                    reply_hash
+                    );
+    }
+
+private:
+    ::dsn::rpc_address _server;
 };
+
 } } 

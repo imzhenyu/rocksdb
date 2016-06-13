@@ -2061,6 +2061,19 @@ SequenceNumber DBImpl::GetLatestSequenceNumber() const {
   return versions_->LastSequence();
 }
 
+uint64_t DBImpl::GetLastFlushedDecree() {
+  SequenceNumber seq;
+  uint64_t d;
+
+  mutex_.Lock();
+  // ATTENTION(qinzuoyan): only use default column family.
+  assert(versions_->GetColumnFamilySet()->NumberOfColumnFamilies() == 1u);
+  versions_->GetColumnFamilySet()->GetDefault()->current()->GetLastFlushSeqDecree(&seq, &d);
+  mutex_.Unlock();
+
+  return d;
+}
+
 Status DBImpl::RunManualCompaction(ColumnFamilyData* cfd, int input_level,
                                    int output_level, uint32_t output_path_id,
                                    const Slice* begin, const Slice* end,

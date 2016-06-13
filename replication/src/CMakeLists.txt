@@ -10,17 +10,10 @@ set(MY_PROJ_SRC "")
 # "GLOB" for non-recursive search
 set(MY_SRC_SEARCH_MODE "GLOB")
 
-set(MY_PROJ_INC_PATH "../../include")
+set(MY_PROJ_INC_PATH "../../include" "${DSN_ROOT}/include/ext")
 
-set(MY_PROJ_LIBS 
-    dsn.replication 
-    dsn.replication.meta_server 
-    dsn.replication.clientlib 
-    dsn.failure_detector
-    dsn.replication.zookeeper_provider 
-    zookeeper_mt
-    thrift
-    )
+
+set(MY_PROJ_LIBS "")
 
 if (UNIX)
 	set(MY_PROJ_LIBS rocksdb ${MY_PROJ_LIBS} z bz2 snappy rt aio pthread)
@@ -30,7 +23,7 @@ endif()
 
 set(MY_PROJ_LIB_PATH "../..")
 
-set(MY_BOOST_PACKAGES system)
+set(MY_BOOST_PACKAGES "")
 
 file(GLOB
     RES_FILES

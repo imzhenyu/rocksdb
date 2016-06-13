@@ -15,7 +15,7 @@
 #include <thrift/transport/TTransport.h>
 
 #include <thrift/cxxfunctional.h>
-#include <dsn/service_api_cpp.h>
+#include "dsn_types.h"
 
 
 namespace dsn { namespace apps {

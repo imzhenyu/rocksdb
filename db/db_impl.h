@@ -165,6 +165,8 @@ class DBImpl : public DB {
 
   virtual SequenceNumber GetLatestSequenceNumber() const override;
 
+  virtual uint64_t GetLastFlushedDecree() override;
+
 #ifndef ROCKSDB_LITE
   virtual Status DisableFileDeletions() override;
   virtual Status EnableFileDeletions(bool force) override;

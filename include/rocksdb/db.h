@@ -576,6 +576,9 @@ class DB {
   // The sequence number of the most recent transaction.
   virtual SequenceNumber GetLatestSequenceNumber() const = 0;
 
+  // The last flushed decree.
+  virtual uint64_t GetLastFlushedDecree() { return 0; }
+
 #ifndef ROCKSDB_LITE
 
   // Prevent file deletions. Compactions will continue to occur,
