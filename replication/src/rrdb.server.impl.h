@@ -14,7 +14,6 @@ namespace dsn {
         public:
             explicit rrdb_service_impl(dsn_gpid gpid);
             virtual ~rrdb_service_impl() {}
-            ::dsn::rpc_address primary_address() const { return replicated_service_app_type_1::primary_address(); }
 
             // the following methods may set physical error if internal error occurs
             virtual void on_put(const update_request& update, ::dsn::rpc_replier<update_response>& reply) override;
@@ -101,6 +100,7 @@ namespace dsn {
             void set_last_durable_decree(int64_t decree) { _last_durable_decree.store(decree); }
             
         private:
+            std::string                  _primary_address;
             std::string                  _replica_name;
             std::string                  _data_dir;
 

@@ -12,7 +12,6 @@
 
 using namespace ::dsn::apps;
 
-static const char* CONNECT = "connect";
 static const char* CLUSTER_INFO_OP = "cluster_info";
 static const char* LIST_APP_OP = "app";
 static const char* LIST_APPS_OP = "ls";
@@ -44,7 +43,6 @@ void printHelpInfo()
 //Help information
 {
     std::cout << "Usage:" << std::endl;
-    std::cout << "\t" << "connect:         connect [meta_servers]" << std::endl;
     std::cout << "\t" << "cluster_info:    cluster_info" << std::endl;
     std::cout << "\t" << "create:          create <app_name> <app_type> [-pc partition_count] [-rc replication_count]" << std::endl;
     std::cout << "\t" << "drop:            drop <app_name>" << std::endl;
@@ -146,6 +144,7 @@ void scanfCommand(int &Argc, std::string Argv[], int paraNum)
 
     if ( line_read == NULL )
     {
+        std::cout << std::endl;
         Argc = -1;
         return;
     }
@@ -239,7 +238,8 @@ void create_app_op(std::string app_name, std::string app_type, int partition_cou
 
     if(app_name.empty() || app_type.empty())
         std::cout << "create <app_name> <app_type> [-pc partition_count] [-rc replication_count]" << std::endl;
-    dsn::error_code err = client_of_dsn.create_app(app_name, app_type, partition_count, replica_count);
+    std::map<std::string, std::string> envs;
+    dsn::error_code err = client_of_dsn.create_app(app_name, app_type, partition_count, replica_count, envs, false);
     if(err == dsn::ERR_OK)
         std::cout << "create app " << app_name << " succeed" << std::endl;
     else
@@ -269,12 +269,16 @@ void list_apps_op(std::string status, std::string out_file, dsn::replication::re
         std::cout << std::endl << "[Result]" << std::endl;
     }
 
-    dsn::replication::app_status s = dsn::replication::AS_INVALID;
+    dsn::app_status::type s = dsn::app_status::AS_INVALID;
     if (!status.empty() && status != "all") {
         std::transform(status.begin(), status.end(), status.begin(), ::toupper);
         status = "AS_" + status;
-        s = enum_from_string(status.c_str(), dsn::replication::AS_INVALID);
-        if(s == dsn::replication::AS_INVALID)
+        for (auto kv : dsn::_app_status_VALUES_TO_NAMES) {
+            if (kv.second == status) {
+                s = (dsn::app_status::type)kv.first;
+            }
+        }
+        if(s == dsn::app_status::AS_INVALID)
             std::cout << "ls [-status <all|available|creating|creating_failed|dropping|dropping_failed|dropped>] [-o <out_file>]" << std::endl;
     }
     dsn::error_code err = client_of_dsn.list_apps(s, out_file);
@@ -324,12 +328,16 @@ void list_node_op(std::string status, std::string out_file, dsn::replication::re
         std::cout << std::endl << "[Result]" << std::endl;
     }
 
-    dsn::replication::node_status s = dsn::replication::NS_INVALID;
+    dsn::replication::node_status::type s = dsn::replication::node_status::NS_INVALID;
     if (!status.empty() && status != "all") {
         std::transform(status.begin(), status.end(), status.begin(), ::toupper);
         status = "NS_" + status;
-        s = enum_from_string(status.c_str(), dsn::replication::NS_INVALID);
-        if(s == dsn::replication::NS_INVALID)
+        for (auto kv : dsn::replication::_node_status_VALUES_TO_NAMES) {
+            if (kv.second == status) {
+                s = (dsn::replication::node_status::type)kv.first;
+            }
+        }
+        if(s == dsn::replication::node_status::NS_INVALID)
             std::cout << "nodes [-status <all|alive|unalive>] [-o <out_file>]" << std::endl;
     }
     dsn::error_code err = client_of_dsn.list_nodes(s, out_file);
@@ -384,7 +392,7 @@ void hash_op(int Argc, std::string Argv[], std::string& app_name, dsn::replicati
     {
         int32_t app_id;
         int32_t partition_count;
-        std::vector<partition_configuration> partitions;
+        std::vector<dsn::partition_configuration> partitions;
         dsn::error_code err = client_of_dsn.list_app(app_name, app_id, partition_count, partitions);
         if (err != dsn::ERR_OK)
         {
@@ -398,7 +406,7 @@ void hash_op(int Argc, std::string Argv[], std::string& app_name, dsn::replicati
         std::cout << std::setw(width) << std::left << "partition_index" << " : " << partition_index << std::endl;
         if (partitions.size() > partition_index)
         {
-            partition_configuration& pc = partitions[partition_index];
+            dsn::partition_configuration& pc = partitions[partition_index];
             std::cout << std::setw(width) << std::left << "primary" << " : " << pc.primary.to_string() << std::endl;
             std::ostringstream oss;
             for (int i = 0; i < pc.secondaries.size(); ++i)
@@ -422,7 +430,8 @@ void get_op(int Argc, std::string Argv[], irrdb_client* client)
     std::string hash_key = Argv[1];
     std::string sort_key = Argv[2];
     std::string value;
-    int ret = client->get(hash_key, sort_key, value);
+    irrdb_client::internal_info info;
+    int ret = client->get(hash_key, sort_key, value, 5000, &info);
     if (ret != RRDB_ERR_OK) {
         if (ret == RRDB_ERR_NOT_FOUND) {
             fprintf(stderr, "Not found\n");
@@ -434,6 +443,13 @@ void get_op(int Argc, std::string Argv[], irrdb_client* client)
     else {
         fprintf(stderr, "%s\n", value.c_str());
     }
+
+    fprintf(stderr, "\n");
+    fprintf(stderr, "app_id          : %d\n", info.app_id);
+    fprintf(stderr, "partition_index : %d\n", info.partition_index);
+    fprintf(stderr, "ballot          : %ld\n", info.ballot);
+    fprintf(stderr, "decree          : %ld\n", info.decree);
+    fprintf(stderr, "server          : %s\n", info.server.c_str());
 }
 
 void set_op(int Argc, std::string Argv[], irrdb_client* client)
@@ -447,13 +463,21 @@ void set_op(int Argc, std::string Argv[], irrdb_client* client)
     std::string hash_key = Argv[1];
     std::string sort_key = Argv[2];
     std::string value = Argv[3];
-    int ret = client->set(hash_key, sort_key, value);
+    irrdb_client::internal_info info;
+    int ret = client->set(hash_key, sort_key, value, 5000, &info);
     if (ret != RRDB_ERR_OK) {
         fprintf(stderr, "ERROR: %s\n", client->get_error_string(ret));
     }
     else {
         fprintf(stderr, "OK\n");
     }
+
+    fprintf(stderr, "\n");
+    fprintf(stderr, "app_id          : %d\n", info.app_id);
+    fprintf(stderr, "partition_index : %d\n", info.partition_index);
+    fprintf(stderr, "ballot          : %ld\n", info.ballot);
+    fprintf(stderr, "decree          : %ld\n", info.decree);
+    fprintf(stderr, "server          : %s\n", info.server.c_str());
 }
 
 void del_op(int Argc, std::string Argv[], irrdb_client* client)
@@ -466,11 +490,19 @@ void del_op(int Argc, std::string Argv[], irrdb_client* client)
 
     std::string hash_key = Argv[1];
     std::string sort_key = Argv[2];
-    int ret = client->del(hash_key, sort_key);
+    irrdb_client::internal_info info;
+    int ret = client->del(hash_key, sort_key, 5000, &info);
     if (ret != RRDB_ERR_OK) {
         fprintf(stderr, "ERROR: %s\n", client->get_error_string(ret));
     }
     else {
         fprintf(stderr, "OK\n");
     }
+
+    fprintf(stderr, "\n");
+    fprintf(stderr, "app_id          : %d\n", info.app_id);
+    fprintf(stderr, "partition_index : %d\n", info.partition_index);
+    fprintf(stderr, "ballot          : %ld\n", info.ballot);
+    fprintf(stderr, "decree          : %ld\n", info.decree);
+    fprintf(stderr, "server          : %s\n", info.server.c_str());
 }

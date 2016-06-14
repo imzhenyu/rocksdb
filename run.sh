@@ -301,7 +301,8 @@ function usage_bench()
     echo "                          readrandom_rrdb, deleteseq_rrdb, deleterandom_rrdb"
     echo "                        default is 'fillseq_rrdb,readrandom_rrdb'"
     echo "   -n <num>             number of key/value pairs, default 100000"
-    echo "   --app_name <num>     app name, default 'rrdb.instance0'"
+    echo "   --cluster_name <str> cluster name, default 'mycluster'"
+    echo "   --app_name <str>     app name, default 'rrdb.instance0'"
     echo "   --thread_num <num>   number of threads, default 1"
     echo "   --key_size <num>     key size, default 16"
     echo "   --value_size <num>   value size, default 100"
@@ -314,6 +315,7 @@ function run_bench()
     CONFIG_SPECIFIED=0
     TYPE=fillseq_rrdb,readrandom_rrdb
     NUM=100000
+    CLUSTER=mycluster
     APP=rrdb.instance0
     THREAD=1
     KEY_SIZE=16
@@ -337,6 +339,10 @@ function run_bench()
                 ;;
             -n)
                 NUM="$2"
+                shift
+                ;;
+            --cluster_name)
+                CLUSTER="$2"
                 shift
                 ;;
             --app_name)
@@ -375,7 +381,7 @@ function run_bench()
 
     ./rrdb_bench --rrdb_config=${CONFIG} --benchmarks=${TYPE} --rrdb_timeout_ms=${TIMEOUT_MS} \
         --key_size=${KEY_SIZE} --value_size=${VALUE_SIZE} --threads=${THREAD} --num=${NUM} \
-        --rrdb_app_name=${APP} --stats_interval=1000 --histogram=1 \
+        --rrdb_cluster_name=${CLUSTER} --rrdb_app_name=${APP} --stats_interval=1000 --histogram=1 \
         --compression_type=none --compression_ratio=1.0
 }
 
@@ -391,7 +397,7 @@ function usage_shell()
 
 function run_shell()
 {
-    CONFIG=${ROOT}/config-client.ini
+    CONFIG=${ROOT}/config-shell.ini
     CONFIG_SPECIFIED=0
     while [[ $# > 0 ]]; do
         key="$1"
@@ -416,7 +422,7 @@ function run_shell()
     done
 
     if [ ${CONFIG_SPECIFIED} -eq 0 ]; then
-        sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-client.ini >${CONFIG}
+        sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-shell.ini >${CONFIG}
     fi
 
     ${DSN_ROOT}/bin/rrdb_cluster/rrdb_cluster ${CONFIG}

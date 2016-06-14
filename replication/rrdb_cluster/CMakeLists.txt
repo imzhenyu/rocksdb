@@ -13,6 +13,7 @@ set(MY_SRC_SEARCH_MODE "GLOB")
 set(MY_PROJ_INC_PATH "../../include" "../client_lib/include" "../client_lib/src" "../src")
 
 set(MY_PROJ_LIBS 
+    dsn.replication.clientlib
     dsn.replication.ddlclient
     rrdb.clientlib
     readline

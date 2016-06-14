@@ -4,8 +4,7 @@
 void dsn_app_registration_rrdb()
 {
     // register all possible service apps
-    dsn::register_app_with_type_1_replication_support< ::dsn::apps::rrdb_service_impl>("server");
-
+    dsn::register_app_with_type_1_replication_support< ::dsn::apps::rrdb_service_impl>("rrdb");
     dsn::register_app< ::dsn::apps::rrdb_client_app>("client");
     dsn::register_app< ::dsn::apps::rrdb_perf_test_client_app>("client.perf.rrdb");
 }

@@ -12,17 +12,16 @@ public:
     explicit rrdb_client(::dsn::rpc_address server) { _server = server; }
     virtual ~rrdb_client() {}
     
- 
     // ---------- call RPC_RRDB_RRDB_PUT ------------
     // - synchronous 
-    std::pair< ::dsn::error_code, int> put_sync(
+    std::pair< ::dsn::error_code, update_response> put_sync(
         const update_request& args,
         std::chrono::milliseconds timeout = std::chrono::milliseconds(0), 
         uint64_t hash = 0,
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
-        return ::dsn::rpc::wait_and_unwrap< int>(
+        return ::dsn::rpc::wait_and_unwrap<update_response>(
             ::dsn::rpc::call(
                 server_addr.unwrap_or(_server),
                 RPC_RRDB_RRDB_PUT,
@@ -58,17 +57,17 @@ public:
                     reply_hash
                     );
     }
- 
+
     // ---------- call RPC_RRDB_RRDB_REMOVE ------------
     // - synchronous 
-    std::pair< ::dsn::error_code, int> remove_sync(
+    std::pair< ::dsn::error_code, update_response> remove_sync(
         const ::dsn::blob& args,
         std::chrono::milliseconds timeout = std::chrono::milliseconds(0), 
         uint64_t hash = 0,
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
-        return ::dsn::rpc::wait_and_unwrap< int>(
+        return ::dsn::rpc::wait_and_unwrap<update_response>(
             ::dsn::rpc::call(
                 server_addr.unwrap_or(_server),
                 RPC_RRDB_RRDB_REMOVE,
@@ -104,7 +103,7 @@ public:
                     reply_hash
                     );
     }
- 
+
     // ---------- call RPC_RRDB_RRDB_GET ------------
     // - synchronous 
     std::pair< ::dsn::error_code, read_response> get_sync(

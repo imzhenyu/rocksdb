@@ -6,7 +6,7 @@
 # ifdef __TITLE__
 # undef __TITLE__
 # endif
-#define __TITLE__ "rrdb.server.impl"
+# define __TITLE__ "rrdb.server.impl"
 
 namespace dsn { namespace apps {
         
@@ -33,8 +33,9 @@ rrdb_service_impl::rrdb_service_impl(dsn_gpid gpid)
       _max_checkpoint_count(3),
       _is_checkpointing(false)
 {
+    _primary_address = ::dsn::rpc_address(dsn_primary_address()).to_string();
     char buf[256];
-    sprintf(buf, "%u.%u@%s", gpid.u.app_id, gpid.u.partition_index, primary_address().to_string());
+    sprintf(buf, "%u.%u@%s", gpid.u.app_id, gpid.u.partition_index, _primary_address.c_str());
     _replica_name = buf;
     _data_dir = dsn_get_app_data_dir(gpid);
 
@@ -218,10 +219,10 @@ void rrdb_service_impl::gc_checkpoints()
     update_response resp;
     auto id = get_gpid();
     resp.app_id = id.u.app_id;
-    resp.pidx = id.u.partition_index;
+    resp.partition_index = id.u.partition_index;
     resp.ballot = _writing_ballot;
     resp.decree = _writing_decree;
-    resp.server = primary_address().to_string();
+    resp.server = _primary_address;
 
     auto opts = _wt_opts;
     opts.given_sequence_number = 0; // auto generate
@@ -272,8 +273,8 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_r
     read_response resp;
     auto id = get_gpid();
     resp.app_id = id.u.app_id;
-    resp.pidx = id.u.partition_index;
-    resp.server = primary_address().to_string();
+    resp.partition_index = id.u.partition_index;
+    resp.server = _primary_address;
 
     rocksdb::Slice skey(key.data(), key.length());
     std::string* value = new std::string();
@@ -331,7 +332,11 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_r
 
         ddebug("%s: open app succeed, last_durable_decree = %" PRId64 "",
                _replica_name.c_str(), last_durable_decree());
+
         _is_open = true;
+
+        open_service(get_gpid());
+
         return ERR_OK;
     }
     else

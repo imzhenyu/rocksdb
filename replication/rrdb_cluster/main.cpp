@@ -26,20 +26,16 @@ int main(int argc, const char* argv[])
         std::cout << "The config file is: " << config_file << std::endl;
     }
 
-    std::string op_name;
+    std::string cluster_name("mycluster");
     std::string app_name;
+    std::string op_name;
 
     std::vector<dsn::rpc_address> meta_servers;
-    dsn::replication::replication_app_client_base::load_meta_servers(meta_servers);
+    std::string section = "uri-resolver.dsn://" + cluster_name;
+    std::string key = "arguments";
+    dsn::replication::replica_helper::load_meta_servers(meta_servers, section.c_str(), key.c_str());
     dsn::replication::replication_ddl_client* client_of_dsn = new dsn::replication::replication_ddl_client(meta_servers);
-
-
-    std::string ip_addr_of_cluster;
-    irrdb_client* client_of_rrdb = rrdb_client_factory::get_client(app_name.c_str(), ip_addr_of_cluster.c_str());
-    if (client_of_rrdb != NULL)
-    {
-        std::cout << "The connecting cluster is: " << client_of_rrdb->get_cluster_meta_servers() << std::endl;
-    }
+    irrdb_client* client_of_rrdb = NULL;
 
     while ( true )
     {
@@ -138,13 +134,16 @@ int main(int argc, const char* argv[])
             dsn::replication::balancer_proposal_request request;
             for (int i=1; i<Argc-1; i+=2) {
                 if ( Argv[i] == "-gpid" ){
-                    sscanf(Argv[i+1].c_str(), "%d.%d", &request.gpid.app_id, &request.gpid.pidx);
+                    int app_id, pidx;
+                    sscanf(Argv[i+1].c_str(), "%d.%d", &app_id, &pidx);
+                    request.pid.set_app_id(app_id);
+                    request.pid.set_partition_index(pidx);
                 }
                 else if ( Argv[i] == "-type" ){
-                    std::map<std::string, dsn::replication::balancer_type> mapper = {
-                        {"move_pri", dsn::replication::BT_MOVE_PRIMARY},
-                        {"copy_pri", dsn::replication::BT_COPY_PRIMARY},
-                        {"copy_sec", dsn::replication::BT_COPY_SECONDARY}
+                    std::map<std::string, dsn::replication::balancer_type::type> mapper = {
+                        {"move_pri", dsn::replication::balancer_type::BT_MOVE_PRIMARY},
+                        {"copy_pri", dsn::replication::balancer_type::BT_COPY_PRIMARY},
+                        {"copy_sec", dsn::replication::balancer_type::BT_COPY_SECONDARY}
                     };
                     if (mapper.find(Argv[i+1]) == mapper.end()) {
                         std::cout << "balancer -gpid <appid.pidx> -type <move_pri|copy_pri|copy_sec> -from <from_address> -to <to_address>" << std::endl;
@@ -161,34 +160,6 @@ int main(int argc, const char* argv[])
             dsn::error_code err = client_of_dsn->send_balancer_proposal(request);
             std::cout << "send balancer proposal result: " << err.to_string() << std::endl;
         }
-        else if (op_name == CONNECT )
-        {
-            if ( Argc == 1 ) {
-                client_of_rrdb = rrdb_client_factory::get_client(app_name.c_str(), ip_addr_of_cluster.c_str());
-                if (client_of_rrdb != NULL) {
-                    std::cout << "The connecting cluster is: " << client_of_rrdb->get_cluster_meta_servers() << std::endl;
-                }
-                continue;
-            }
-            else if (Argc != 2) {
-                std::cout << "USAGE: connect [meta_servers]" << std::endl;
-                continue;
-            }
-
-            std::string tmp_cluster = Argv[1];
-            std::vector< ::dsn::rpc_address> servers;
-            bool parseSuccess = connect_op(tmp_cluster, servers);
-            if ( parseSuccess )
-            {
-                delete client_of_dsn;
-                client_of_dsn = new dsn::replication::replication_ddl_client(servers);
-                std::cout << "OK" << std::endl;
-                ip_addr_of_cluster = tmp_cluster;
-                app_name = "";
-            }
-            else
-                std::cout << "USAGE: connect [meta_servers]" << std::endl;
-        }
         else if ( op_name == USE_OP )
             use_op(Argc, Argv, app_name);
         else if ( op_name == HASH_OP )
@@ -200,7 +171,7 @@ int main(int argc, const char* argv[])
                 std::cout << "USAGE: use [app_name]" << std::endl;
                 continue;
             }
-            client_of_rrdb = rrdb_client_factory::get_client(app_name.c_str(), ip_addr_of_cluster.c_str());
+            client_of_rrdb = rrdb_client_factory::get_client(cluster_name.c_str(), app_name.c_str());
             if (client_of_rrdb != NULL)
                 get_op(Argc, Argv, client_of_rrdb);
         }
@@ -211,7 +182,7 @@ int main(int argc, const char* argv[])
                 std::cout << "USAGE: use [app_name]" << std::endl;
                 continue;
             }
-            client_of_rrdb = rrdb_client_factory::get_client(app_name.c_str(), ip_addr_of_cluster.c_str());
+            client_of_rrdb = rrdb_client_factory::get_client(cluster_name.c_str(), app_name.c_str());
             if (client_of_rrdb != NULL)
                 set_op(Argc, Argv, client_of_rrdb);
         }
@@ -222,7 +193,7 @@ int main(int argc, const char* argv[])
                 std::cout << "USAGE: use [app_name]" << std::endl;
                 continue;
             }
-            client_of_rrdb = rrdb_client_factory::get_client(app_name.c_str(), ip_addr_of_cluster.c_str());
+            client_of_rrdb = rrdb_client_factory::get_client(cluster_name.c_str(), app_name.c_str());
             if (client_of_rrdb != NULL)
                 del_op(Argc, Argv, client_of_rrdb);
         }

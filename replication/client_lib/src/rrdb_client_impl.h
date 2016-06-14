@@ -3,40 +3,21 @@
 #include "rrdb_client.h"
 #include "rrdb.client.h"
 
-using namespace dsn::replication;
+using namespace dsn::apps;
 
 namespace dsn{ namespace apps{
 
 void rrdb_generate_key(::dsn::blob& key, const std::string& hash_key, const std::string& sort_key);
+
 uint64_t rrdb_key_hash(const ::dsn::blob& key);
-
-class rrdb_client_hash_key : public rrdb_client
-{
-public:
-    rrdb_client_hash_key(
-            const std::vector< ::dsn::rpc_address>& meta_servers,
-            const char* replicate_app_name)
-        :rrdb_client(meta_servers, replicate_app_name)
-    {}
-
-    virtual uint64_t get_key_hash(const ::dsn::blob& key)
-    {
-        return rrdb_key_hash(key);
-    }
-
-    virtual uint64_t get_key_hash(const update_request& key)
-    {
-        return rrdb_key_hash(key.key);
-    }
-};
 
 class rrdb_client_impl : public irrdb_client
 {
 public:
-    rrdb_client_impl(const char* app_name, const std::vector< ::dsn::rpc_address>& meta_servers);
-    virtual ~rrdb_client_impl(){}
+    rrdb_client_impl(const char* cluster_name, const char* app_name);
+    virtual ~rrdb_client_impl();
 
-    virtual const char* get_cluster_meta_servers() const override;
+    virtual const char* get_cluster_name() const override;
 
     virtual const char* get_app_name() const override;
 
@@ -72,9 +53,11 @@ private:
     static int get_rocksdb_server_error(int rocskdb_error);
 
 private:
-    rrdb_client_hash_key _client;
-    std::string _cluster_meta_servers;
+    std::string _cluster_name;
     std::string _app_name;
+    std::string _server_uri;
+    rpc_address _server_address;
+    rrdb_client *_client;
 
     ///
     /// \brief _client_error_to_string

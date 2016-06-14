@@ -83,6 +83,7 @@ using GFLAGS::SetUsageMessage;
 using namespace ::dsn::apps;
 
 DEFINE_string(rrdb_config, "replication/config-client.ini", "rrdb config file");
+DEFINE_string(rrdb_cluster_name, "mycluster", "rrdb cluster name");
 DEFINE_string(rrdb_app_name, "rrdb.instance0", "rrdb app name");
 DEFINE_int32(rrdb_timeout_ms, 10000, "rrdb read/write timeout in milliseconds");
 
@@ -2792,7 +2793,8 @@ class Benchmark {
 
     RandomGenerator gen;
     int64_t bytes = 0;
-    irrdb_client* client = rrdb_client_factory::get_client(FLAGS_rrdb_app_name.c_str());
+    irrdb_client* client = rrdb_client_factory::get_client(
+                FLAGS_rrdb_cluster_name.c_str(), FLAGS_rrdb_app_name.c_str());
     if (client == nullptr) {
       fprintf(stderr, "create client error\n");
       exit(1);
@@ -2998,7 +3000,8 @@ class Benchmark {
     int64_t bytes = 0;
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
-    irrdb_client* client = rrdb_client_factory::get_client(FLAGS_rrdb_app_name.c_str());
+    irrdb_client* client = rrdb_client_factory::get_client(
+                FLAGS_rrdb_cluster_name.c_str(), FLAGS_rrdb_app_name.c_str());
     if (client == nullptr) {
       fprintf(stderr, "Create client error\n");
       exit(1);
@@ -3235,7 +3238,8 @@ class Benchmark {
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
 
-    irrdb_client* client = rrdb_client_factory::get_client(FLAGS_rrdb_app_name.c_str());
+    irrdb_client* client = rrdb_client_factory::get_client(
+                FLAGS_rrdb_cluster_name.c_str(), FLAGS_rrdb_app_name.c_str());
     if (client == nullptr) {
       fprintf(stderr, "create client error\n");
       exit(1);

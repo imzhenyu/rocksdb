@@ -18,10 +18,9 @@ public:
     struct internal_info
     {
         int32_t app_id;
-        int32_t pidx;
+        int32_t partition_index;
         int64_t ballot;
         int64_t decree;
-        int64_t seqno;
         std::string server;
     };
 
@@ -30,18 +29,16 @@ public:
     virtual ~irrdb_client(){}
 
     ///
-    /// \brief get_cluster_meta_servers
-    /// a cluster is identified by a list of meta servers.
-    /// we identify a cluster by address list of meta servers, format as "ip:port,ip:port,ip:port".
-    /// \return
+    /// \brief get_app_name
+    /// \return cluster_name
     ///
-    virtual const char* get_cluster_meta_servers() const = 0;
+    virtual const char* get_cluster_name() const = 0;
 
     ///
     /// \brief get_app_name
     /// an app is a logical isolated table.
     /// a cluster can have multiple apps.
-    /// \return
+    /// \return app_name
     ///
     virtual const char* get_app_name() const = 0;
 
@@ -141,16 +138,15 @@ public:
     ///
     /// \brief get_client
     /// get an instance for a given cluster and a given app name.
+    /// \param cluster_name
+    /// the pegasus cluster name.
+    /// a cluster can have multiple apps.
     /// \param app_name
     /// an app is a logical isolated k-v store.
     /// a cluster can have multiple apps.
-    /// \param cluster_meta_servers
-    /// a cluster is identified by a list of meta servers.
-    /// we identigy a cluster by address list of meta servers, format as "ip:port,ip:port,ip:port".
-    /// if "", means using meta servers specified in the [meta_server].server_list of config file.
     /// \return
     /// the client instance. DO NOT delete this client even after usage.
-    static irrdb_client* get_client(const char* app_name, const char* cluster_meta_servers = "");
+    static irrdb_client* get_client(const char* cluster_name, const char* app_name);
 };
 
 }} //namespace
