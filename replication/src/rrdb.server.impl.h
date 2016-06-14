@@ -33,9 +33,9 @@ namespace dsn {
             //  - ERR_FILE_OPERATION_FAILED
             virtual ::dsn::error_code stop(bool clear_state) override;
 
-            virtual ::dsn::error_code begin_write(int64_t ballot, int64_t decree) override;
+            virtual void on_batched_rpc_requests(int64_t ballot, int64_t decree, dsn_message_t* requests, int count) override;
 
-            virtual ::dsn::error_code end_write() override;
+            virtual int get_internal_error() override { return _internal_error; }
 
             // returns:
             //  - ERR_OK
@@ -100,6 +100,7 @@ namespace dsn {
             void set_last_durable_decree(int64_t decree) { _last_durable_decree.store(decree); }
             
         private:
+            dsn_gpid                     _gpid;
             std::string                  _primary_address;
             std::string                  _replica_name;
             std::string                  _data_dir;
@@ -112,11 +113,9 @@ namespace dsn {
             volatile bool                _is_open;
             std::atomic<int64_t>         _last_durable_decree;
 
-            volatile bool                _is_writing;
-            int64_t                      _writing_ballot;
-            int64_t                      _writing_decree;
             rocksdb::WriteBatch          _batch;
             std::vector< ::dsn::rpc_replier<update_response>> _batch_repliers;
+            int                          _internal_error;
 
             const int                    _max_checkpoint_count;
             volatile bool                _is_checkpointing; // whether the db is doing checkpoint

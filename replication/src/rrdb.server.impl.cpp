@@ -25,11 +25,10 @@ static bool chkpt_init_from_dir(const char* name, int64_t& decree)
 
 rrdb_service_impl::rrdb_service_impl(dsn_gpid gpid) 
     : ::dsn::replicated_service_app_type_1(gpid),
+      _gpid(gpid),
       _db(nullptr),
       _is_open(false),
-      _is_writing(false),
-      _writing_ballot(0),
-      _writing_decree(0),
+      _internal_error(0),
       _max_checkpoint_count(3),
       _is_checkpointing(false)
 {
@@ -200,70 +199,73 @@ void rrdb_service_impl::gc_checkpoints()
     }
 }
 
-::dsn::error_code rrdb_service_impl::begin_write(int64_t ballot, int64_t decree)
+void rrdb_service_impl::on_batched_rpc_requests(int64_t ballot, int64_t decree, dsn_message_t* requests, int count)
 {
     dassert(_is_open, "");
-    dassert(!_is_writing, "");
 
-    _is_writing = true;
-    _writing_ballot = ballot;
-    _writing_decree = decree;
+    if (requests == nullptr || count == 0)
+        return;
 
-    return ERR_OK;
-}
+    for (int i = 0; i < count; ++i)
+    {
+        dsn_message_t request = requests[i];
+        ::dsn::message_ex* msg = (::dsn::message_ex*)request;
+        if (msg->local_rpc_code == RPC_RRDB_RRDB_PUT)
+        {
+            update_request update;
+            ::dsn::unmarshall(request, update);
+            rocksdb::Slice skey(update.key.data(), update.key.length());
+            rocksdb::Slice svalue(update.value.data(), update.value.length());
+            _batch.Put(skey, svalue);
+            _batch_repliers.emplace_back(dsn_msg_create_response(request));
+        }
+        else if (msg->local_rpc_code == RPC_RRDB_RRDB_REMOVE)
+        {
+            ::dsn::blob key;
+            ::dsn::unmarshall(request, key);
+            rocksdb::Slice skey(key.data(), key.length());
+            _batch.Delete(skey);
+            _batch_repliers.emplace_back(dsn_msg_create_response(request));
+        }
+        else
+        {
+            dassert(false, "rpc code not handled: %s", task_code(msg->local_rpc_code).to_string());
+        }
+    }
 
-::dsn::error_code rrdb_service_impl::end_write()
-{
-    dassert(_is_writing, "");
-
-    update_response resp;
-    auto id = get_gpid();
-    resp.app_id = id.u.app_id;
-    resp.partition_index = id.u.partition_index;
-    resp.ballot = _writing_ballot;
-    resp.decree = _writing_decree;
-    resp.server = _primary_address;
-
-    auto opts = _wt_opts;
-    opts.given_sequence_number = 0; // auto generate
-    opts.given_decree = resp.decree;
-    auto status = _db->Write(opts, &_batch);
+    _wt_opts.given_decree = decree;
+    auto status = _db->Write(_wt_opts, &_batch);
     if (!status.ok())
     {
         derror("%s: write rocksdb failed, ballot = %" PRId64 ", decree = %" PRId64 ", error = %s",
-               _replica_name.c_str(), resp.ballot, resp.decree, status.ToString().c_str());
+               _replica_name.c_str(), ballot, decree, status.ToString().c_str());
+        _internal_error = status.code();
     }
 
+    update_response resp;
     resp.error = status.code();
+    resp.app_id = _gpid.u.app_id;
+    resp.partition_index = _gpid.u.partition_index;
+    resp.ballot = ballot;
+    resp.decree = decree;
+    resp.server = _primary_address;
     for (auto& r : _batch_repliers)
     {
         r(resp);
     }
 
-    _batch_repliers.clear();
     _batch.Clear();
-    _is_writing = false;
-
-    return status.ok() ? ERR_OK : ERR_LOCAL_APP_FAILURE;
+    _batch_repliers.clear();
 }
 
 void rrdb_service_impl::on_put(const update_request& update, ::dsn::rpc_replier<update_response>& reply)
 {
-    dassert(_is_writing, "");
-
-    rocksdb::Slice skey(update.key.data(), update.key.length());
-    rocksdb::Slice svalue(update.value.data(), update.value.length());
-    _batch.Put(skey, svalue);
-    _batch_repliers.push_back(reply);
+    dassert(false, "not implemented");
 }
 
 void rrdb_service_impl::on_remove(const ::dsn::blob& key, ::dsn::rpc_replier<update_response>& reply)
 {
-    dassert(_is_writing, "");
-
-    rocksdb::Slice skey(key.data(), key.length());
-    _batch.Delete(skey);
-    _batch_repliers.push_back(reply);
+    dassert(false, "not implemented");
 }
 
 void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_response>& reply)
