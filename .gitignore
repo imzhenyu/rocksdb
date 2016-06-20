@@ -5,6 +5,8 @@ data/
 rrdb_bench
 rrdb_cluster
 *.ini
+.shell.*
+.zk*
 
 TARGETS
 make_config.mk

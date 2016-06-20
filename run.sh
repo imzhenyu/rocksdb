@@ -17,14 +17,24 @@ function usage()
     echo "usage: run.sh <command> [<args>]"
     echo
     echo "Command list:"
-    echo "   help           print the help info"
-    echo "   build          build the system"
-    echo "   start_onebox   start rrdb onebox"
-    echo "   stop_onebox    stop rrdb onebox"
-    echo "   list_onebox    list rrdb onebox"
-    echo "   clear_onebox   clear_rrdb onebox"
-    echo "   bench          benchmark test"
-    echo "   shell          run rrdb_cluster shell"
+    echo "   help                      print the help info"
+    echo "   build                     build the system"
+    echo
+    echo "   start_zk                  start local single zookeeper server"
+    echo "   stop_zk                   stop local zookeeper server"
+    echo "   clear_zk                  stop local zookeeper server and clear data"
+    echo
+    echo "   start_onebox              start rrdb onebox"
+    echo "   stop_onebox               stop rrdb onebox"
+    echo "   list_onebox               list rrdb onebox"
+    echo "   clear_onebox              clear rrdb onebox"
+    echo
+    echo "   start_onebox_instance     start rrdb onebox instance"
+    echo "   stop_onebox_instance      stop rrdb onebox instance"
+    echo "   restart_onebox_instance   restart rrdb onebox instance"
+    echo
+    echo "   bench                     benchmark test"
+    echo "   shell                     run rrdb_cluster shell"
     echo
     echo "Command 'run.sh <command> -h' will print help for subcommands."
 }
@@ -119,6 +129,129 @@ function run_build()
 }
 
 #####################
+## start_zk
+#####################
+function usage_start_zk()
+{
+    echo "Options for subcommand 'start_zk':"
+    echo "   -h|--help         print the help info"
+    echo "   -d|--install_dir <dir>"
+    echo "                     zookeeper install directory,"
+    echo "                     if not set, then default is './.zk_install'"
+    echo "   -p|--port <port>  listen port of zookeeper, default is 22181"
+    echo "   -g|--git          git source to download zookeeper: github|xiaomi, default is github"
+}
+function run_start_zk()
+{
+    INSTALL_DIR=`pwd`/.zk_install
+    PORT=22181
+    GIT_SOURCE=github
+    while [[ $# > 0 ]]; do
+        key="$1"
+        case $key in
+            -h|--help)
+                usage_start_zk
+                exit 0
+                ;;
+            -d|--install_dir)
+                INSTALL_DIR=$2
+                shift
+                ;;
+            -p|--port)
+                PORT=$2
+                shift
+                ;;
+            -g|--git)
+                GIT_SOURCE=$2
+                shift
+                ;;
+            *)
+                echo "ERROR: unknown option \"$key\""
+                echo
+                usage_start_zk
+                exit -1
+                ;;
+        esac
+        shift
+    done
+    INSTALL_DIR="$INSTALL_DIR" PORT="$PORT" GIT_SOURCE="$GIT_SOURCE" ./replication/start_zk.sh
+}
+
+#####################
+## stop_zk
+#####################
+function usage_stop_zk()
+{
+    echo "Options for subcommand 'stop_zk':"
+    echo "   -h|--help         print the help info"
+    echo "   -d|--install_dir <dir>"
+    echo "                     zookeeper install directory,"
+    echo "                     if not set, then default is './.zk_install'"
+}
+function run_stop_zk()
+{
+    INSTALL_DIR=`pwd`/.zk_install
+    while [[ $# > 0 ]]; do
+        key="$1"
+        case $key in
+            -h|--help)
+                usage_stop_zk
+                exit 0
+                ;;
+            -d|--install_dir)
+                INSTALL_DIR=$2
+                shift
+                ;;
+            *)
+                echo "ERROR: unknown option \"$key\""
+                echo
+                usage_stop_zk
+                exit -1
+                ;;
+        esac
+        shift
+    done
+    INSTALL_DIR="$INSTALL_DIR" ./replication/stop_zk.sh
+}
+
+#####################
+## clear_zk
+#####################
+function usage_clear_zk()
+{
+    echo "Options for subcommand 'clear_zk':"
+    echo "   -h|--help         print the help info"
+    echo "   -d|--install_dir <dir>"
+    echo "                     zookeeper install directory,"
+    echo "                     if not set, then default is './.zk_install'"
+}
+function run_clear_zk()
+{
+    INSTALL_DIR=`pwd`/.zk_install
+    while [[ $# > 0 ]]; do
+        key="$1"
+        case $key in
+            -h|--help)
+                usage_clear_zk
+                exit 0
+                ;;
+            -d|--install_dir)
+                INSTALL_DIR=$2
+                shift
+                ;;
+            *)
+                echo "ERROR: unknown option \"$key\""
+                echo
+                usage_clear__zk
+                exit -1
+                ;;
+        esac
+        shift
+    done
+    INSTALL_DIR="$INSTALL_DIR" ./replication/clear_zk.sh
+}
+
+#####################
 ## start_onebox
 #####################
 function usage_start_onebox()
@@ -129,12 +262,18 @@ function usage_start_onebox()
     echo "                     meta server count"
     echo "   -r|--replica_count <num>"
     echo "                     replica server count"
+    echo "   -a|--app_name <str>"
+    echo "                     default app name, default is rrdb.instance0"
+    echo "   -p|--partition_count <num>"
+    echo "                     default app partition count, default is 1"
 }
 
 function run_start_onebox()
 {
     META_COUNT=3
     REPLICA_COUNT=3
+    APP_NAME=rrdb.instance0
+    PARTITION_COUNT=1
     while [[ $# > 0 ]]; do
         key="$1"
         case $key in
@@ -150,6 +289,14 @@ function run_start_onebox()
                 REPLICA_COUNT="$2"
                 shift
                 ;;
+            -a|--app_name)
+                APP_NAME="$2"
+                shift
+                ;;
+            -p|--partition_count)
+                PARTITION_COUNT="$2"
+                shift
+                ;;
             *)
                 echo "ERROR: unknown option \"$key\""
                 echo
@@ -163,7 +310,7 @@ function run_start_onebox()
         echo "ERROR: file ${DSN_ROOT}/bin/rrdb/rrdb not exist"
         exit -1
     fi
-    sed "s/@LOCAL_IP@/`hostname -i`/g;s/@META_COUNT@/${META_COUNT}/g;s/@REPLICA_COUNT@/${REPLICA_COUNT}/g" \
+    sed "s/@LOCAL_IP@/`hostname -i`/g;s/@META_COUNT@/${META_COUNT}/g;s/@REPLICA_COUNT@/${REPLICA_COUNT}/g;s/@APP_NAME@/${APP_NAME}/g;s/@PARTITION_COUNT@/${PARTITION_COUNT}/g" \
         ${ROOT}/replication/config-server.ini >${ROOT}/config-server.ini
     echo "starting server"
     mkdir -p onebox
@@ -221,8 +368,8 @@ function run_stop_onebox()
         esac
         shift
     done
-    ps -ef | grep rrdb | grep 'app_list meta@' | grep -v grep | awk '{print $2}' | xargs kill &>/dev/null
-    ps -ef | grep rrdb | grep 'app_list replica@' | grep -v grep | awk '{print $2}' | xargs kill &>/dev/null
+    ps -ef | grep rrdb | grep 'app_list meta@' | awk '{print $2}' | xargs kill &>/dev/null
+    ps -ef | grep rrdb | grep 'app_list replica@' | awk '{print $2}' | xargs kill &>/dev/null
 }
 
 #####################
@@ -252,7 +399,7 @@ function run_list_onebox()
         esac
         shift
     done
-    ps -ef | grep rrdb | grep app_list | grep -v grep
+    ps -ef | grep rrdb | grep app_list
 }
 
 #####################
@@ -286,6 +433,232 @@ function run_clear_onebox()
     if [ -d onebox ]; then
         rm -rf onebox config-server.ini config-client.ini &>/dev/null
     fi
+}
+
+#####################
+## start_onebox_instance
+#####################
+function usage_start_onebox_instance()
+{
+    echo "Options for subcommand 'start_onebox_instance':"
+    echo "   -h|--help         print the help info"
+    echo "   -m|--meta_id <num>"
+    echo "                     meta server id"
+    echo "   -r|--replica_id <num>"
+    echo "                     replica server id"
+}
+
+function run_start_onebox_instance()
+{
+    META_ID=0
+    REPLICA_ID=0
+    while [[ $# > 0 ]]; do
+        key="$1"
+        case $key in
+            -h|--help)
+                usage_start_onebox_instance
+                exit 0
+                ;;
+            -m|--meta_id)
+                META_ID="$2"
+                shift
+                ;;
+            -r|--replica_id)
+                REPLICA_ID="$2"
+                shift
+                ;;
+            *)
+                echo "ERROR: unknown option \"$key\""
+                echo
+                usage_start_onebox_instance
+                exit -1
+                ;;
+        esac
+        shift
+    done
+    if [ $META_ID = "0" -a $REPLICA_ID = "0" ]; then
+        echo "ERROR: no meta_id or replica_id set"
+        exit -1
+    fi
+    if [ $META_ID != "0" -a $REPLICA_ID != "0" ]; then
+        echo "ERROR: meta_id and replica_id can only set one"
+        exit -1
+    fi
+    if [ $META_ID != "0" ]; then
+        dir=onebox/meta$META_ID
+        if [ ! -d $dir ]; then
+            echo "ERROR: invalid meta_id"
+            exit -1
+        fi
+        if ps -ef | grep rrdb | grep app_list | grep meta@$META_ID ; then
+            echo "INFO: meta@$META_ID already running"
+            exit -1
+        fi
+        cd $dir
+        echo "cd `pwd` && ./rrdb config.ini -app_list meta@$META_ID &>result &"
+        ./rrdb config.ini -app_list meta@$META_ID &>result &
+        PID=$!
+        ps -ef | grep rrdb | grep $PID
+        cd ..
+        echo "INFO: meta@$META started"
+    fi
+    if [ $REPLICA_ID != "0" ]; then
+        dir=onebox/replica$REPLICA_ID
+        if [ ! -d $dir ]; then
+            echo "ERROR: invalid replica_id"
+            exit -1
+        fi
+        if ps -ef | grep rrdb | grep app_list | grep replica@$REPLICA_ID ; then
+            echo "INFO: replica@$REPLICA_ID already running"
+            exit -1
+        fi
+        cd $dir
+        echo "cd `pwd` && ./rrdb config.ini -app_list replica@$REPLICA_ID &>result &"
+        ./rrdb config.ini -app_list replica@$REPLICA_ID &>result &
+        PID=$!
+        ps -ef | grep rrdb | grep $PID
+        cd ..
+        echo "INFO: replica@$REPLICA_ID started"
+    fi
+}
+
+#####################
+## stop_onebox_instance
+#####################
+function usage_stop_onebox_instance()
+{
+    echo "Options for subcommand 'stop_onebox_instance':"
+    echo "   -h|--help         print the help info"
+    echo "   -m|--meta_id <num>"
+    echo "                     meta server id"
+    echo "   -r|--replica_id <num>"
+    echo "                     replica server id"
+}
+
+function run_stop_onebox_instance()
+{
+    META_ID=0
+    REPLICA_ID=0
+    while [[ $# > 0 ]]; do
+        key="$1"
+        case $key in
+            -h|--help)
+                usage_stop_onebox_instance
+                exit 0
+                ;;
+            -m|--meta_id)
+                META_ID="$2"
+                shift
+                ;;
+            -r|--replica_id)
+                REPLICA_ID="$2"
+                shift
+                ;;
+            *)
+                echo "ERROR: unknown option \"$key\""
+                echo
+                usage_stop_onebox_instance
+                exit -1
+                ;;
+        esac
+        shift
+    done
+    if [ $META_ID = "0" -a $REPLICA_ID = "0" ]; then
+        echo "ERROR: no meta_id or replica_id set"
+        exit -1
+    fi
+    if [ $META_ID != "0" -a $REPLICA_ID != "0" ]; then
+        echo "ERROR: meta_id and replica_id can only set one"
+        exit -1
+    fi
+    if [ $META_ID != "0" ]; then
+        dir=onebox/meta$META_ID
+        if [ ! -d $dir ]; then
+            echo "ERROR: invalid meta_id"
+            exit -1
+        fi
+        if ! ps -ef | grep rrdb | grep app_list | grep meta@$META_ID ; then
+            echo "INFO: meta@$META_ID is not running"
+            exit -1
+        fi
+        ps -ef | grep rrdb | grep "app_list meta@$META_ID\>" | awk '{print $2}' | xargs kill &>/dev/null
+        echo "INFO: meta@$META_ID stopped"
+    fi
+    if [ $REPLICA_ID != "0" ]; then
+        dir=onebox/replica$REPLICA_ID
+        if [ ! -d $dir ]; then
+            echo "ERROR: invalid replica_id"
+            exit -1
+        fi
+        if ! ps -ef | grep rrdb | grep app_list | grep replica@$REPLICA_ID ; then
+            echo "INFO: replica@$REPLICA_ID is not running"
+            exit -1
+        fi
+        ps -ef | grep rrdb | grep "app_list replica@$REPLICA_ID\>" | awk '{print $2}' | xargs kill &>/dev/null
+        echo "INFO: replica@$REPLICA_ID stopped"
+    fi
+}
+
+#####################
+## restart_onebox_instance
+#####################
+function usage_restart_onebox_instance()
+{
+    echo "Options for subcommand 'restart_onebox_instance':"
+    echo "   -h|--help         print the help info"
+    echo "   -m|--meta_id <num>"
+    echo "                     meta server id"
+    echo "   -r|--replica_id <num>"
+    echo "                     replica server id"
+    echo "   -s|--sleep <num>"
+    echo "                     sleep time in seconds between stop and start, default is 1"
+}
+
+function run_restart_onebox_instance()
+{
+    META_ID=0
+    REPLICA_ID=0
+    SLEEP=1
+    while [[ $# > 0 ]]; do
+        key="$1"
+        case $key in
+            -h|--help)
+                usage_restart_onebox_instance
+                exit 0
+                ;;
+            -m|--meta_id)
+                META_ID="$2"
+                shift
+                ;;
+            -r|--replica_id)
+                REPLICA_ID="$2"
+                shift
+                ;;
+            -s|--sleep)
+                SLEEP="$2"
+                shift
+                ;;
+            *)
+                echo "ERROR: unknown option \"$key\""
+                echo
+                usage_restart_onebox_instance
+                exit -1
+                ;;
+        esac
+        shift
+    done
+    if [ $META_ID = "0" -a $REPLICA_ID = "0" ]; then
+        echo "ERROR: no meta_id or replica_id set"
+        exit -1
+    fi
+    if [ $META_ID != "0" -a $REPLICA_ID != "0" ]; then
+        echo "ERROR: meta_id and replica_id can only set one"
+        exit -1
+    fi
+    run_stop_onebox_instance -m $META_ID -r $REPLICA_ID
+    echo "sleep $SLEEP"
+    sleep $SLEEP
+    run_start_onebox_instance -m $META_ID -r $REPLICA_ID
 }
 
 #####################
@@ -392,7 +765,7 @@ function usage_shell()
 {
     echo "Options for subcommand 'shell':"
     echo "   -h|--help            print the help info"
-    echo "   -c|--config <path>   config file path, default './config-client.ini'"
+    echo "   -c|--config <path>   config file path, default './config-shell.ini'"
 }
 
 function run_shell()
@@ -443,6 +816,18 @@ case $cmd in
         shift
         run_build $*
         ;;
+    start_zk)
+        shift
+        run_start_zk $*
+        ;;
+    stop_zk)
+        shift
+        run_stop_zk $*
+        ;;
+    clear_zk)
+        shift
+        run_clear_zk $*
+        ;;
     start_onebox)
         shift
         run_start_onebox $*
@@ -458,6 +843,18 @@ case $cmd in
     list_onebox)
         shift
         run_list_onebox $*
+        ;;
+    start_onebox_instance)
+        shift
+        run_start_onebox_instance $*
+        ;;
+    stop_onebox_instance)
+        shift
+        run_stop_onebox_instance $*
+        ;;
+    restart_onebox_instance)
+        shift
+        run_restart_onebox_instance $*
         ;;
     bench)
         shift
