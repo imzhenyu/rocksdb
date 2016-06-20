@@ -4,9 +4,34 @@
 #include <string>
 #include <vector>
 
-using namespace ::dsn::apps;
+using namespace ::dsn::replication;
 
 #define PARA_NUM 10
+
+static void move_primary(dsn::rpc_address from, dsn::rpc_address to, std::vector<configuration_proposal_action>& actions)
+{
+    actions.reserve(2);
+    actions.emplace_back( configuration_proposal_action{ from, from, config_type::CT_DOWNGRADE_TO_SECONDARY} );
+    actions.emplace_back( configuration_proposal_action{ to, to, config_type::CT_UPGRADE_TO_PRIMARY } );
+}
+
+static void copy_primary(dsn::rpc_address from, dsn::rpc_address to, std::vector<configuration_proposal_action>& actions)
+{
+    actions.reserve(3);
+    actions.emplace_back( configuration_proposal_action{ from, to, config_type::CT_ADD_SECONDARY_FOR_LB } );
+    actions.emplace_back( configuration_proposal_action{ from, from, config_type::CT_DOWNGRADE_TO_SECONDARY } );
+    actions.emplace_back( configuration_proposal_action{ to, to, config_type::CT_UPGRADE_TO_PRIMARY } );
+}
+
+static void copy_seconary(dsn::rpc_address from, dsn::rpc_address to, std::vector<configuration_proposal_action>& actions)
+{
+    actions.reserve(2);
+    dsn::rpc_address primary;
+    actions.emplace_back( configuration_proposal_action{ primary, to, config_type::CT_ADD_SECONDARY_FOR_LB} );
+    actions.emplace_back( configuration_proposal_action{ primary, from, config_type::CT_DOWNGRADE_TO_INACTIVE} );
+}
+
+typedef void proposal_action(dsn::rpc_address from, dsn::rpc_address to, std::vector<configuration_proposal_action>& actions);
 
 int main(int argc, const char* argv[])
 {
@@ -131,32 +156,36 @@ int main(int argc, const char* argv[])
                           << "start_migration" << std::endl;
         }
         else if (op_name == BALANCER_OP) {
-            dsn::replication::balancer_proposal_request request;
+            configuration_balancer_request request;
+            proposal_action* action_func = nullptr;
+            dsn::rpc_address from, to;
+
+            std::map<std::string, proposal_action*> action_map {
+                {"move_pri", &move_primary},
+                {"copy_pri", &copy_primary},
+                {"move_sec", &copy_seconary}
+            };
+
             for (int i=1; i<Argc-1; i+=2) {
-                if ( Argv[i] == "-gpid" ){
-                    int app_id, pidx;
-                    sscanf(Argv[i+1].c_str(), "%d.%d", &app_id, &pidx);
-                    request.pid.set_app_id(app_id);
-                    request.pid.set_partition_index(pidx);
+                if (strcmp(argv[i], "-gpid") == 0){
+                    sscanf(argv[i + 1], "%d.%d", &request.gpid.raw().u.app_id, &request.gpid.raw().u.partition_index);
                 }
-                else if ( Argv[i] == "-type" ){
-                    std::map<std::string, dsn::replication::balancer_type::type> mapper = {
-                        {"move_pri", dsn::replication::balancer_type::BT_MOVE_PRIMARY},
-                        {"copy_pri", dsn::replication::balancer_type::BT_COPY_PRIMARY},
-                        {"copy_sec", dsn::replication::balancer_type::BT_COPY_SECONDARY}
-                    };
-                    if (mapper.find(Argv[i+1]) == mapper.end()) {
+                else if (strcmp(argv[i], "-type") == 0){
+                    auto iter = action_map.find(argv[i+1]);
+                    if (iter == action_map.end()) {
                         std::cout << "balancer -gpid <appid.pidx> -type <move_pri|copy_pri|copy_sec> -from <from_address> -to <to_address>" << std::endl;
                     }
-                    request.type = mapper[Argv[i+1]];
+                    action_func = action_map[argv[i+1]];
                 }
-                else if ( Argv[i] == "-from" ) {
-                    request.from_addr.from_string_ipv4(Argv[i+1].c_str());
+                else if (strcmp(argv[i], "-from") == 0) {
+                    from.from_string_ipv4(argv[i+1]);
                 }
-                else if ( Argv[i] == "-to" ) {
-                    request.to_addr.from_string_ipv4(Argv[i+1].c_str());
+                else if (strcmp(argv[i], "-to") == 0) {
+                    to.from_string_ipv4(argv[i+1]);
                 }
             }
+
+            action_func(from, to, request.action_list);
             dsn::error_code err = client_of_dsn->send_balancer_proposal(request);
             std::cout << "send balancer proposal result: " << err.to_string() << std::endl;
         }

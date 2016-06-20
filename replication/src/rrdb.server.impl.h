@@ -33,9 +33,9 @@ namespace dsn {
             //  - ERR_FILE_OPERATION_FAILED
             virtual ::dsn::error_code stop(bool clear_state) override;
 
-            virtual void on_batched_rpc_requests(int64_t ballot, int64_t decree, dsn_message_t* requests, int count) override;
+            virtual void on_batched_write_requests(int64_t decree, dsn_message_t* requests, int count) override;
 
-            virtual int get_internal_error() override { return _internal_error; }
+            virtual int get_physical_error() override { return _physical_error; }
 
             // returns:
             //  - ERR_OK
@@ -115,7 +115,7 @@ namespace dsn {
 
             rocksdb::WriteBatch          _batch;
             std::vector< ::dsn::rpc_replier<update_response>> _batch_repliers;
-            int                          _internal_error;
+            int                          _physical_error;
 
             const int                    _max_checkpoint_count;
             volatile bool                _is_checkpointing; // whether the db is doing checkpoint

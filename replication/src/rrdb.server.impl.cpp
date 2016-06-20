@@ -28,7 +28,7 @@ rrdb_service_impl::rrdb_service_impl(dsn_gpid gpid)
       _gpid(gpid),
       _db(nullptr),
       _is_open(false),
-      _internal_error(0),
+      _physical_error(0),
       _max_checkpoint_count(3),
       _is_checkpointing(false)
 {
@@ -199,7 +199,7 @@ void rrdb_service_impl::gc_checkpoints()
     }
 }
 
-void rrdb_service_impl::on_batched_rpc_requests(int64_t ballot, int64_t decree, dsn_message_t* requests, int count)
+void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t* requests, int count)
 {
     dassert(_is_open, "");
 
@@ -237,16 +237,16 @@ void rrdb_service_impl::on_batched_rpc_requests(int64_t ballot, int64_t decree, 
     auto status = _db->Write(_wt_opts, &_batch);
     if (!status.ok())
     {
-        derror("%s: write rocksdb failed, ballot = %" PRId64 ", decree = %" PRId64 ", error = %s",
-               _replica_name.c_str(), ballot, decree, status.ToString().c_str());
-        _internal_error = status.code();
+        derror("%s: write rocksdb failed, decree = %" PRId64 ", error = %s",
+               _replica_name.c_str(), decree, status.ToString().c_str());
+        _physical_error = status.code();
     }
 
     update_response resp;
     resp.error = status.code();
     resp.app_id = _gpid.u.app_id;
     resp.partition_index = _gpid.u.partition_index;
-    resp.ballot = ballot;
+    resp.ballot = -1;
     resp.decree = decree;
     resp.server = _primary_address;
     for (auto& r : _batch_repliers)
