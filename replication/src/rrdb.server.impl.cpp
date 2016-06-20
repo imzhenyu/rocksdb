@@ -565,7 +565,7 @@ namespace dsn {
             state.meta_state = std::move(writer.get_buffer());
 
             state.from_decree_excluded = 0;
-            state.to_decree_included = local_commit;
+            state.to_decree_included = ci;
 
             ddebug("%s: get checkpoint succeed, from_decree_excluded = 0, to_decree_included = %" PRId64,
                    data_dir(),
@@ -662,24 +662,24 @@ namespace dsn {
             dassert(last_durable_decree() == 0, "");
 
             // checkpoint immediately if need
-            if (local_commit != last_durable_decree())
+            if (state.to_decree_included > 0)
             {
-                err = checkpoint(local_commit);
+                err = checkpoint(state.to_decree_included);
                 if (err != ERR_OK)
                 {
                     derror("%s: checkpoint failed, err = %s", data_dir(), err.to_string());
                     return err;
                 }
-                dassert(local_commit == last_durable_decree(),
+                dassert(state.to_decree_included == last_durable_decree(),
                     "commit and durable decree mismatch after checkpoint: %" PRId64 " vs %" PRId64,
-                    local_commit,
+                    state.to_decree_included,
                     last_durable_decree()
                     );
             }
 
-            ddebug("%s: apply checkpoint succeed, last_committed_decree = %" PRId64,
+            ddebug("%s: apply checkpoint succeed, last_durable_decree = %" PRId64,
                    data_dir(),
-                   local_commit
+                   state.to_decree_included
                 );
             return ERR_OK;
         }
