@@ -128,7 +128,7 @@ TEST_F(WalManagerTest, ReadFirstRecordCache) {
   unique_ptr<WritableFileWriter> file_writer(
       new WritableFileWriter(std::move(file), EnvOptions()));
   log::Writer writer(std::move(file_writer), 1,
-		     db_options_.recycle_log_file_num > 0);
+             db_options_.recycle_log_file_num > 0);
   WriteBatch batch;
   batch.Put("foo", "bar");
   WriteBatchInternal::SetSequence(&batch, 10);

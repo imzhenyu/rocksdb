@@ -26,7 +26,8 @@ namespace dsn {
 
         rrdb_service_impl::rrdb_service_impl(dsn_gpid gpid) 
             : ::dsn::replicated_service_app_type_1(gpid),
-              _max_checkpoint_count(3)
+              _max_checkpoint_count(3),
+              _physical_error(0)
         {
             _is_open = false;
             _is_checkpointing = false;
@@ -239,9 +240,9 @@ namespace dsn {
         ::dsn::error_code rrdb_service_impl::start(int argc, char** argv)
         {
             dassert(!_is_open, "rrdb service %s is already opened", data_dir());
-			
-			auto path = utils::filesystem::path_combine(data_dir(), "rdb");
-			::dsn::utils::filesystem::remove_path(path);
+            
+            auto path = utils::filesystem::path_combine(data_dir(), "rdb");
+            ::dsn::utils::filesystem::remove_path(path);
 
             rocksdb::Options opts = _db_opts;
             opts.create_if_missing = true;
@@ -250,27 +251,27 @@ namespace dsn {
             int64_t last_checkpoint;
             last_checkpoint = parse_checkpoints();
             gc_checkpoints();
-						
-			if (last_checkpoint > 0)
-			{
-				auto cname = chkpt_get_dir_name(last_checkpoint);
+                        
+            if (last_checkpoint > 0)
+            {
+                auto cname = chkpt_get_dir_name(last_checkpoint);
                 auto cpath = utils::filesystem::path_combine(data_dir(), cname);
-				bool r = ::dsn::utils::filesystem::rename_path(cpath, path);
-				dassert(r, "");
-			}
-			else
-			{
-				::dsn::utils::filesystem::create_directory(path);
-			}
+                bool r = ::dsn::utils::filesystem::rename_path(cpath, path);
+                dassert(r, "");
+            }
+            else
+            {
+                ::dsn::utils::filesystem::create_directory(path);
+            }
 
             auto status = rocksdb::DB::Open(opts, path, &_db);
             if (status.ok())
             {
-				if (last_checkpoint > 0)
-				{
-					auto err = checkpoint_internal(last_checkpoint);
-					dassert(err == ERR_OK, "");
-				}
+                if (last_checkpoint > 0)
+                {
+                    auto err = checkpoint_internal(last_checkpoint);
+                    dassert(err == ERR_OK, "");
+                }
 
                 set_last_durable_decree(last_checkpoint);
 
@@ -280,7 +281,7 @@ namespace dsn {
 
                 _is_open = true;
 
-				open_service(gpid());
+                open_service(get_gpid());
                 return ERR_OK;
             }
             else
@@ -302,7 +303,7 @@ namespace dsn {
                 return ERR_OK;
             }
 
-            close_service(gpid());
+            close_service(get_gpid());
 
             _is_open = false;
             delete _db;
@@ -325,62 +326,62 @@ namespace dsn {
             return ERR_OK;
         }
 
-		::dsn::error_code rrdb_service_impl::checkpoint_internal(int64_t version)
-		{
-			rocksdb::Checkpoint* chkpt = nullptr;
-			auto status = rocksdb::Checkpoint::Create(_db, &chkpt);
-			if (!status.ok())
-			{
-				derror("%s: create Checkpoint object failed, status = %s",
-					data_dir(),
-					status.ToString().c_str()
-				);
-				_is_checkpointing = false;
-				return ERR_LOCAL_APP_FAILURE;
-			}
+        ::dsn::error_code rrdb_service_impl::checkpoint_internal(int64_t version)
+        {
+            rocksdb::Checkpoint* chkpt = nullptr;
+            auto status = rocksdb::Checkpoint::Create(_db, &chkpt);
+            if (!status.ok())
+            {
+                derror("%s: create Checkpoint object failed, status = %s",
+                    data_dir(),
+                    status.ToString().c_str()
+                );
+                _is_checkpointing = false;
+                return ERR_LOCAL_APP_FAILURE;
+            }
 
-			auto dir = chkpt_get_dir_name(version);
-			auto chkpt_dir = utils::filesystem::path_combine(data_dir(), dir);
-			if (utils::filesystem::directory_exists(chkpt_dir))
-			{
-				dwarn("%s: checkpoint directory %s already exist, remove it first",
-					data_dir(),
-					chkpt_dir.c_str()
-				);
-				if (!utils::filesystem::remove_path(chkpt_dir))
-				{
-					derror("%s: remove old checkpoint directory %s failed",
-						data_dir(),
-						chkpt_dir.c_str()
-					);
-					_is_checkpointing = false;
-					return ERR_FILE_OPERATION_FAILED;
-				}
-			}
+            auto dir = chkpt_get_dir_name(version);
+            auto chkpt_dir = utils::filesystem::path_combine(data_dir(), dir);
+            if (utils::filesystem::directory_exists(chkpt_dir))
+            {
+                dwarn("%s: checkpoint directory %s already exist, remove it first",
+                    data_dir(),
+                    chkpt_dir.c_str()
+                );
+                if (!utils::filesystem::remove_path(chkpt_dir))
+                {
+                    derror("%s: remove old checkpoint directory %s failed",
+                        data_dir(),
+                        chkpt_dir.c_str()
+                    );
+                    _is_checkpointing = false;
+                    return ERR_FILE_OPERATION_FAILED;
+                }
+            }
 
-			status = chkpt->CreateCheckpoint(chkpt_dir);
-			delete chkpt;
-			chkpt = nullptr;
-			if (!status.ok())
-			{
-				derror("%s: create checkpoint failed, status = %s",
-					data_dir(),
-					status.ToString().c_str()
-				);
-				utils::filesystem::remove_path(chkpt_dir);
-				_is_checkpointing = false;
-				return ERR_LOCAL_APP_FAILURE;
-			}
+            status = chkpt->CreateCheckpoint(chkpt_dir);
+            delete chkpt;
+            chkpt = nullptr;
+            if (!status.ok())
+            {
+                derror("%s: create checkpoint failed, status = %s",
+                    data_dir(),
+                    status.ToString().c_str()
+                );
+                utils::filesystem::remove_path(chkpt_dir);
+                _is_checkpointing = false;
+                return ERR_LOCAL_APP_FAILURE;
+            }
 
-			ddebug("%s: create checkpoint %s succeed",
-				data_dir(),
-				chkpt_dir.c_str()
-			);
+            ddebug("%s: create checkpoint %s succeed",
+                data_dir(),
+                chkpt_dir.c_str()
+            );
 
-			return ERR_OK;
-		}
+            return ERR_OK;
+        }
 
-        ::dsn::error_code rrdb_service_impl::checkpoint(int64_t version)
+        ::dsn::error_code rrdb_service_impl::sync_checkpoint(int64_t version)
         {
             if (!_is_open || _is_checkpointing)
                 return ERR_WRONG_TIMING;
@@ -390,8 +391,8 @@ namespace dsn {
 
             _is_checkpointing = true;
             
-			auto err = checkpoint_internal(version);
-			if (err != ERR_OK) return err;
+            auto err = checkpoint_internal(version);
+            if (err != ERR_OK) return err;
 
             {
                 utils::auto_lock<utils::ex_lock_nr> l(_checkpoints_lock);
@@ -407,7 +408,7 @@ namespace dsn {
         }
 
         // Must be thread safe.
-        ::dsn::error_code rrdb_service_impl::checkpoint_async(int64_t version)
+        ::dsn::error_code rrdb_service_impl::async_checkpoint(int64_t version)
         {
             return ERR_NOT_IMPLEMENTED;
 
@@ -573,7 +574,7 @@ namespace dsn {
             return ERR_OK;
         }
 
-        ::dsn::error_code rrdb_service_impl::apply_checkpoint(int64_t local_commit, const dsn_app_learn_state& state, dsn_chkpt_apply_mode mode)
+        ::dsn::error_code rrdb_service_impl::apply_checkpoint(dsn_chkpt_apply_mode mode, int64_t local_commit, const dsn_app_learn_state& state)
         {
             ::dsn::error_code err;
             int64_t ci;
@@ -664,7 +665,7 @@ namespace dsn {
             // checkpoint immediately if need
             if (state.to_decree_included > 0)
             {
-                err = checkpoint(state.to_decree_included);
+                err = sync_checkpoint(state.to_decree_included);
                 if (err != ERR_OK)
                 {
                     derror("%s: checkpoint failed, err = %s", data_dir(), err.to_string());

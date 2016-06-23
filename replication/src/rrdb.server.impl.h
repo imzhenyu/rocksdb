@@ -15,10 +15,10 @@ namespace dsn {
             rrdb_service_impl(dsn_gpid gpid);
 
             // the following methods may set physical error if internal error occurs
-            virtual void on_put(const update_request& update, ::dsn::rpc_replier<int>& reply) override;
-            virtual void on_remove(const ::dsn::blob& key, ::dsn::rpc_replier<int>& reply) override;
-            virtual void on_merge(const update_request& update, ::dsn::rpc_replier<int>& reply) override;
-            virtual void on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_response>& reply) override;
+            void on_put(const update_request& update, ::dsn::rpc_replier<int>& reply) override;
+            void on_remove(const ::dsn::blob& key, ::dsn::rpc_replier<int>& reply) override;
+            void on_merge(const update_request& update, ::dsn::rpc_replier<int>& reply) override;
+            void on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_response>& reply) override;
 
             // open the db
             // if create_new == true, then first clear data and then create new db
@@ -26,14 +26,14 @@ namespace dsn {
             //  - ERR_OK
             //  - ERR_FILE_OPERATION_FAILED
             //  - ERR_LOCAL_APP_FAILURE
-            virtual ::dsn::error_code start(int argc, char** argv) override;
+            ::dsn::error_code start(int argc, char** argv) override;
 
             // close the db
             // if clear_state == true, then clear data after close the db
             // returns:
             //  - ERR_OK
             //  - ERR_FILE_OPERATION_FAILED
-            virtual ::dsn::error_code stop(bool clear_state) override;
+            ::dsn::error_code stop(bool clear_state) override;
 
             // sync generate checkpoint
             // returns:
@@ -42,7 +42,7 @@ namespace dsn {
             //  - ERR_NO_NEED_OPERATE
             //  - ERR_LOCAL_APP_FAILURE
             //  - ERR_FILE_OPERATION_FAILED
-            virtual ::dsn::error_code checkpoint(int64_t version) override;
+            ::dsn::error_code sync_checkpoint(int64_t version) override;
 
             // async generate checkpoint
             // returns:
@@ -52,9 +52,9 @@ namespace dsn {
             //  - ERR_LOCAL_APP_FAILURE
             //  - ERR_FILE_OPERATION_FAILED
             //  - ERR_TRY_AGAIN
-            virtual ::dsn::error_code checkpoint_async(int64_t version) override;
+            ::dsn::error_code async_checkpoint(int64_t version) override;
 
-            virtual int64_t get_last_checkpoint_version() const { return _last_durable_decree.load(); }
+            int64_t get_last_checkpoint_decree() override { return _last_durable_decree.load(); }
 
             // get the last checkpoint
             // if succeed:
@@ -65,7 +65,7 @@ namespace dsn {
             //  - ERR_OK
             //  - ERR_OBJECT_NOT_FOUND
             //  - ERR_FILE_OPERATION_FAILED
-            virtual ::dsn::error_code get_checkpoint(
+            ::dsn::error_code get_checkpoint(
                 int64_t start,
                 int64_t local_commit,
                 void*   learn_request,
@@ -82,7 +82,9 @@ namespace dsn {
             //  - error code of close()
             //  - error code of open()
             //  - error code of checkpoint()
-            virtual ::dsn::error_code apply_checkpoint(int64_t local_commit, const dsn_app_learn_state& state, dsn_chkpt_apply_mode mode) override;
+            ::dsn::error_code apply_checkpoint(dsn_chkpt_apply_mode mode, int64_t local_commit, const dsn_app_learn_state& state) override;
+
+            int get_physical_error() override { return _physical_error; }
 
         private:
             // parse checkpoint directories in the data dir
@@ -93,12 +95,13 @@ namespace dsn {
             // garbage collection checkpoints according to _max_checkpoint_count
             void gc_checkpoints();
 
-			::dsn::error_code checkpoint_internal(int64_t version);
+            ::dsn::error_code checkpoint_internal(int64_t version);
 
             const char* data_dir() { return _data_dir.c_str(); }
             int64_t last_durable_decree() { return _last_durable_decree.load(); }
-            void    set_last_durable_decree(int64_t d) { _last_durable_decree = d; }
-            
+            void    set_last_durable_decree(int64_t d) { _last_durable_decree = d; }            
+            void    set_physical_error(int err) { _physical_error = err; }
+
         private:
             rocksdb::DB           *_db;
             
@@ -114,6 +117,8 @@ namespace dsn {
             std::vector<int64_t>         _checkpoints;      // ordered checkpoints
             std::string                  _data_dir;
             std::atomic<int64_t>         _last_durable_decree;
+
+            int                   _physical_error;
         };
 
         // --------- inline implementations -----------------
