@@ -113,7 +113,7 @@ public:
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
-        return ::dsn::rpc::wait_and_unwrap< read_response>(
+        return ::dsn::rpc::wait_and_unwrap<read_response>(
             ::dsn::rpc::call(
                 server_addr.unwrap_or(_server),
                 RPC_RRDB_RRDB_GET,

@@ -246,7 +246,6 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
     resp.error = status.code();
     resp.app_id = _gpid.u.app_id;
     resp.partition_index = _gpid.u.partition_index;
-    resp.ballot = -1;
     resp.decree = decree;
     resp.server = _primary_address;
     for (auto& r : _batch_repliers)

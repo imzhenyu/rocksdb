@@ -89,7 +89,6 @@ int rrdb_client_impl::set(
         {
             info->app_id = pr.second.app_id;
             info->partition_index = pr.second.partition_index;
-            info->ballot = pr.second.ballot;
             info->decree = pr.second.decree;
             info->server = pr.second.server;
         }
@@ -97,7 +96,6 @@ int rrdb_client_impl::set(
         {
             info->app_id = -1;
             info->partition_index = -1;
-            info->ballot = -1;
             info->decree = -1;
         }
     }
@@ -131,7 +129,6 @@ int rrdb_client_impl::get(
         {
             info->app_id = pr.second.app_id;
             info->partition_index = pr.second.partition_index;
-            info->ballot = -1;
             info->decree = -1;
             info->server = pr.second.server;
         }
@@ -139,7 +136,6 @@ int rrdb_client_impl::get(
         {
             info->app_id = -1;
             info->partition_index = -1;
-            info->ballot = -1;
             info->decree = -1;
         }
     }
@@ -167,7 +163,6 @@ int rrdb_client_impl::del(
         {
             info->app_id = pr.second.app_id;
             info->partition_index = pr.second.partition_index;
-            info->ballot = pr.second.ballot;
             info->decree = pr.second.decree;
             info->server = pr.second.server;
         }
@@ -175,7 +170,6 @@ int rrdb_client_impl::del(
         {
             info->app_id = -1;
             info->partition_index = -1;
-            info->ballot = -1;
             info->decree = -1;
         }
     }

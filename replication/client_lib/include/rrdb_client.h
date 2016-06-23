@@ -19,7 +19,6 @@ public:
     {
         int32_t app_id;
         int32_t partition_index;
-        int64_t ballot;
         int64_t decree;
         std::string server;
     };

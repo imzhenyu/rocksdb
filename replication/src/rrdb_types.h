@@ -15,7 +15,7 @@
 #include <thrift/transport/TTransport.h>
 
 #include <thrift/cxxfunctional.h>
-#include "dsn_types.h"
+#include <dsn/service_api_cpp.h>
 
 
 namespace dsn { namespace apps {
@@ -79,11 +79,10 @@ inline std::ostream& operator<<(std::ostream& out, const update_request& obj)
 }
 
 typedef struct _update_response__isset {
-  _update_response__isset() : error(false), app_id(false), partition_index(false), ballot(false), decree(false), server(false) {}
+  _update_response__isset() : error(false), app_id(false), partition_index(false), decree(false), server(false) {}
   bool error :1;
   bool app_id :1;
   bool partition_index :1;
-  bool ballot :1;
   bool decree :1;
   bool server :1;
 } _update_response__isset;
@@ -93,14 +92,13 @@ class update_response {
 
   update_response(const update_response&);
   update_response& operator=(const update_response&);
-  update_response() : error(0), app_id(0), partition_index(0), ballot(0), decree(0), server() {
+  update_response() : error(0), app_id(0), partition_index(0), decree(0), server() {
   }
 
   virtual ~update_response() throw();
   int32_t error;
   int32_t app_id;
   int32_t partition_index;
-  int64_t ballot;
   int64_t decree;
   std::string server;
 
@@ -111,8 +109,6 @@ class update_response {
   void __set_app_id(const int32_t val);
 
   void __set_partition_index(const int32_t val);
-
-  void __set_ballot(const int64_t val);
 
   void __set_decree(const int64_t val);
 
@@ -125,8 +121,6 @@ class update_response {
     if (!(app_id == rhs.app_id))
       return false;
     if (!(partition_index == rhs.partition_index))
-      return false;
-    if (!(ballot == rhs.ballot))
       return false;
     if (!(decree == rhs.decree))
       return false;

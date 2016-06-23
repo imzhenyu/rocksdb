@@ -13,9 +13,8 @@ struct update_response
     1:i32           error;
     2:i32           app_id;
     3:i32           partition_index;
-    4:i64           ballot;
-    5:i64           decree;
-    6:string        server;
+    4:i64           decree;
+    5:string        server;
 }
 
 struct read_response

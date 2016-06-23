@@ -136,10 +136,6 @@ void update_response::__set_partition_index(const int32_t val) {
   this->partition_index = val;
 }
 
-void update_response::__set_ballot(const int64_t val) {
-  this->ballot = val;
-}
-
 void update_response::__set_decree(const int64_t val) {
   this->decree = val;
 }
@@ -195,21 +191,13 @@ uint32_t update_response::read(::apache::thrift::protocol::TProtocol* iprot) {
         break;
       case 4:
         if (ftype == ::apache::thrift::protocol::T_I64) {
-          xfer += iprot->readI64(this->ballot);
-          this->__isset.ballot = true;
-        } else {
-          xfer += iprot->skip(ftype);
-        }
-        break;
-      case 5:
-        if (ftype == ::apache::thrift::protocol::T_I64) {
           xfer += iprot->readI64(this->decree);
           this->__isset.decree = true;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
-      case 6:
+      case 5:
         if (ftype == ::apache::thrift::protocol::T_STRING) {
           xfer += iprot->readString(this->server);
           this->__isset.server = true;
@@ -246,15 +234,11 @@ uint32_t update_response::write(::apache::thrift::protocol::TProtocol* oprot) co
   xfer += oprot->writeI32(this->partition_index);
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("ballot", ::apache::thrift::protocol::T_I64, 4);
-  xfer += oprot->writeI64(this->ballot);
-  xfer += oprot->writeFieldEnd();
-
-  xfer += oprot->writeFieldBegin("decree", ::apache::thrift::protocol::T_I64, 5);
+  xfer += oprot->writeFieldBegin("decree", ::apache::thrift::protocol::T_I64, 4);
   xfer += oprot->writeI64(this->decree);
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("server", ::apache::thrift::protocol::T_STRING, 6);
+  xfer += oprot->writeFieldBegin("server", ::apache::thrift::protocol::T_STRING, 5);
   xfer += oprot->writeString(this->server);
   xfer += oprot->writeFieldEnd();
 
@@ -268,7 +252,6 @@ void swap(update_response &a, update_response &b) {
   swap(a.error, b.error);
   swap(a.app_id, b.app_id);
   swap(a.partition_index, b.partition_index);
-  swap(a.ballot, b.ballot);
   swap(a.decree, b.decree);
   swap(a.server, b.server);
   swap(a.__isset, b.__isset);
@@ -278,7 +261,6 @@ update_response::update_response(const update_response& other2) {
   error = other2.error;
   app_id = other2.app_id;
   partition_index = other2.partition_index;
-  ballot = other2.ballot;
   decree = other2.decree;
   server = other2.server;
   __isset = other2.__isset;
@@ -287,7 +269,6 @@ update_response& update_response::operator=(const update_response& other3) {
   error = other3.error;
   app_id = other3.app_id;
   partition_index = other3.partition_index;
-  ballot = other3.ballot;
   decree = other3.decree;
   server = other3.server;
   __isset = other3.__isset;
@@ -299,7 +280,6 @@ void update_response::printTo(std::ostream& out) const {
   out << "error=" << to_string(error);
   out << ", " << "app_id=" << to_string(app_id);
   out << ", " << "partition_index=" << to_string(partition_index);
-  out << ", " << "ballot=" << to_string(ballot);
   out << ", " << "decree=" << to_string(decree);
   out << ", " << "server=" << to_string(server);
   out << ")";
