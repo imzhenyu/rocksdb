@@ -202,34 +202,43 @@ void rrdb_service_impl::gc_checkpoints()
 void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t* requests, int count)
 {
     dassert(_is_open, "");
+    dassert(requests != nullptr, "");
 
-    if (requests == nullptr || count == 0)
-        return;
-
-    for (int i = 0; i < count; ++i)
+    if (count == 0)
     {
-        dsn_message_t request = requests[i];
-        ::dsn::message_ex* msg = (::dsn::message_ex*)request;
-        if (msg->local_rpc_code == RPC_RRDB_RRDB_PUT)
+        // write fake data
+        // TODO(qinzuoyan): maybe no need to write fake date, just write empty batch
+        _batch.Put(rocksdb::Slice(), rocksdb::Slice());
+        _batch_repliers.emplace_back(nullptr);
+    }
+    else
+    {
+        for (int i = 0; i < count; ++i)
         {
-            update_request update;
-            ::dsn::unmarshall(request, update);
-            rocksdb::Slice skey(update.key.data(), update.key.length());
-            rocksdb::Slice svalue(update.value.data(), update.value.length());
-            _batch.Put(skey, svalue);
-            _batch_repliers.emplace_back(dsn_msg_create_response(request));
-        }
-        else if (msg->local_rpc_code == RPC_RRDB_RRDB_REMOVE)
-        {
-            ::dsn::blob key;
-            ::dsn::unmarshall(request, key);
-            rocksdb::Slice skey(key.data(), key.length());
-            _batch.Delete(skey);
-            _batch_repliers.emplace_back(dsn_msg_create_response(request));
-        }
-        else
-        {
-            dassert(false, "rpc code not handled: %s", task_code(msg->local_rpc_code).to_string());
+            dsn_message_t request = requests[i];
+            dassert(request != nullptr, "");
+            ::dsn::message_ex* msg = (::dsn::message_ex*)request;
+            if (msg->local_rpc_code == RPC_RRDB_RRDB_PUT)
+            {
+                update_request update;
+                ::dsn::unmarshall(request, update);
+                rocksdb::Slice skey(update.key.data(), update.key.length());
+                rocksdb::Slice svalue(update.value.data(), update.value.length());
+                _batch.Put(skey, svalue);
+                _batch_repliers.emplace_back(dsn_msg_create_response(request));
+            }
+            else if (msg->local_rpc_code == RPC_RRDB_RRDB_REMOVE)
+            {
+                ::dsn::blob key;
+                ::dsn::unmarshall(request, key);
+                rocksdb::Slice skey(key.data(), key.length());
+                _batch.Delete(skey);
+                _batch_repliers.emplace_back(dsn_msg_create_response(request));
+            }
+            else
+            {
+                dassert(false, "rpc code not handled: %s", task_code(msg->local_rpc_code).to_string());
+            }
         }
     }
 
@@ -250,7 +259,10 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
     resp.server = _primary_address;
     for (auto& r : _batch_repliers)
     {
-        r(resp);
+        if (!r.is_empty())
+        {
+            r(resp);
+        }
     }
 
     _batch.Clear();
@@ -316,14 +328,18 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_r
     {
         parse_checkpoints();
 
-        auto ci = _db->GetLastFlushedDecree();
+        int64_t ci = _db->GetLastFlushedDecree();
         if (ci != last_durable_decree())
         {
+            ddebug("%s: start to do async checkpoint, last_durable_decree = %" PRId64 ", last_flushed_decree = %" PRId64,
+                   _replica_name.c_str(), last_durable_decree(), ci);
             auto err = async_checkpoint(ci);
             if (err != ERR_OK)
             {
                 derror("%s: create checkpoint failed, error = %s",
                         _replica_name.c_str(), err.to_string());
+                delete _db;
+                _db = nullptr;
                 return err;
             }
             dassert(ci == last_durable_decree(),
@@ -466,7 +482,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_r
 // Must be thread safe.
 ::dsn::error_code rrdb_service_impl::async_checkpoint(int64_t /*last_commit*/)
 {
-    if (!_is_open || _is_checkpointing)
+    if (_is_checkpointing)
         return ERR_WRONG_TIMING;
 
     if (last_durable_decree() == _db->GetLastFlushedDecree())

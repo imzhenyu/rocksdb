@@ -66,6 +66,7 @@ void printHelpInfo()
     std::cout << "\twith -detailed option, program will also print partition state" << std::endl;
 }
 
+static std::string s_last_history;
 void rl_gets(char *&line_read, bool nextCommand = true)
 {
     if(line_read)
@@ -78,8 +79,11 @@ void rl_gets(char *&line_read, bool nextCommand = true)
     else
         line_read = readline(">>>");
 
-    if(line_read && *line_read)
+    if(line_read && *line_read && s_last_history != line_read)
+    {
         add_history(line_read);
+        s_last_history = line_read;
+    }
 }
 
 //scanf a word
