@@ -4,7 +4,6 @@ onebox/
 data/
 rrdb_bench
 rrdb_cluster
-*.ini
 .shell.*
 .zk*
 
