@@ -2,11 +2,13 @@ RRDB_ERR_CODE(RRDB_ERR_OK,                    0,      "success");
 RRDB_ERR_CODE(RRDB_ERR_UNKNOWN,               -1,     "unknown error");
 RRDB_ERR_CODE(RRDB_ERR_TIMEOUT,               -2,     "timeout");
 RRDB_ERR_CODE(RRDB_ERR_OBJECT_NOT_FOUND,      -3,     "object not found");
+RRDB_ERR_CODE(RRDB_ERR_NETWORK_FAILURE,       -4,     "network failure");
 
-// META SERVER ERROR
+// SERVER ERROR
 RRDB_ERR_CODE(RRDB_ERR_APP_NOT_EXIST,         -101,   "app not exist");
 RRDB_ERR_CODE(RRDB_ERR_APP_EXIST,             -102,   "app already exist");
 RRDB_ERR_CODE(RRDB_ERR_SERVER_INTERNAL_ERROR, -103,   "server internal error");
+RRDB_ERR_CODE(RRDB_ERR_SERVER_CHANGED,        -104,   "server changed");
 
 // CLIENT ERROR
 RRDB_ERR_CODE(RRDB_ERR_INVALID_APP_NAME,      -201,   "app name is invalid, only letters, digits or underscore is valid");

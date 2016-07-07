@@ -54,6 +54,7 @@ rrdb_client_impl::rrdb_client_impl(const char* cluster_name, const char* app_nam
 rrdb_client_impl::~rrdb_client_impl()
 {
     delete _client;
+    dsn_uri_destroy(_server_address.group_handle());
 }
 
 const char* rrdb_client_impl::get_cluster_name() const
@@ -194,7 +195,9 @@ const char* rrdb_client_impl::get_error_string(int error_code) const
     _server_error_to_client[dsn::ERR_OK] = RRDB_ERR_OK;
     _server_error_to_client[dsn::ERR_TIMEOUT] = RRDB_ERR_TIMEOUT;
     _server_error_to_client[dsn::ERR_FILE_OPERATION_FAILED] = RRDB_ERR_SERVER_INTERNAL_ERROR;
+    _server_error_to_client[dsn::ERR_INVALID_STATE] = RRDB_ERR_SERVER_CHANGED;
     _server_error_to_client[dsn::ERR_OBJECT_NOT_FOUND] = RRDB_ERR_OBJECT_NOT_FOUND;
+    _server_error_to_client[dsn::ERR_NETWORK_FAILURE] = RRDB_ERR_NETWORK_FAILURE;
 
     _server_error_to_client[dsn::ERR_APP_NOT_EXIST] = RRDB_ERR_APP_NOT_EXIST;
     _server_error_to_client[dsn::ERR_APP_EXIST] = RRDB_ERR_APP_EXIST;
