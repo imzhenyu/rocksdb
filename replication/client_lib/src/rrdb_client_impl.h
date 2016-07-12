@@ -2,14 +2,9 @@
 #include <string>
 #include "rrdb_client.h"
 #include "rrdb.client.h"
-
-using namespace dsn::apps;
+#include "key_utils.h"
 
 namespace dsn{ namespace apps{
-
-void rrdb_generate_key(::dsn::blob& key, const std::string& hash_key, const std::string& sort_key);
-
-uint64_t rrdb_key_hash(const ::dsn::blob& key);
 
 class rrdb_client_impl : public irrdb_client
 {
