@@ -48,11 +48,19 @@ void signal_handler(int signal_id)
     }
 }
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
     register_apps();
     signal(SIGTERM, signal_handler);
-    dsn_run_config("config.ini", false);
+
+    if (argc == 1)
+    {
+        dsn_run_config("config.ini", false);
+    }
+    else
+    {
+        dsn_run(argc, argv, false);
+    }
 
     while (exit_flags == 0)
     {
