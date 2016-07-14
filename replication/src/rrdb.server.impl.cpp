@@ -1,6 +1,6 @@
 # include "rrdb.server.impl.h"
 # include <algorithm>
-# include <dsn/cpp/utils.h>
+# include <dsn/utility/utils.h>
 # include <rocksdb/utilities/checkpoint.h>
 
 # ifdef __TITLE__
