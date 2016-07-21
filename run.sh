@@ -314,6 +314,7 @@ function run_start_onebox()
         echo "ERROR: file ${DSN_ROOT}/bin/rrdb/rrdb not exist"
         exit -1
     fi
+    run_start_zk
     sed "s/@LOCAL_IP@/`hostname -i`/g;s/@META_COUNT@/${META_COUNT}/g;s/@REPLICA_COUNT@/${REPLICA_COUNT}/g;s/@APP_NAME@/${APP_NAME}/g;s/@PARTITION_COUNT@/${PARTITION_COUNT}/g" \
         ${ROOT}/replication/config-server.ini >${ROOT}/config-server.ini
     echo "starting server"
@@ -434,9 +435,8 @@ function run_clear_onebox()
         shift
     done
     run_stop_onebox
-    if [ -d onebox ]; then
-        rm -rf onebox config-server.ini config-client.ini &>/dev/null
-    fi
+    run_clear_zk
+    rm -rf onebox *.log *.data config-*.ini &>/dev/null
 }
 
 #####################
@@ -677,7 +677,7 @@ function usage_start_kill_test()
     echo "   -r|--replica_count <num>"
     echo "                     replica server count, default is 5"
     echo "   -a|--app_name <str>"
-    echo "                     app name, default is killtest"
+    echo "                     app name, default is rrdb.instance0"
     echo "   -p|--partition_count <num>"
     echo "                     app partition count, default is 16"
     echo "   -t|--kill_type <str>"
@@ -688,7 +688,7 @@ function run_start_kill_test()
 {
     META_COUNT=3
     REPLICA_COUNT=5
-    APP_NAME=killtest
+    APP_NAME=rrdb.instance0
     PARTITION_COUNT=16
     KILL_TYPE=all
     while [[ $# > 0 ]]; do
@@ -729,9 +729,6 @@ function run_start_kill_test()
     done
 
     run_clear_onebox
-    run_clear_zk
-
-    run_start_zk
     run_start_onebox -m $META_COUNT -r $REPLICA_COUNT -a $APP_NAME -p $PARTITION_COUNT
 
     cd $ROOT
@@ -814,7 +811,8 @@ function run_clear_kill_test()
         shift
     done
     run_stop_kill_test
-    rm -rf onebox *.log *.data config-*.ini &>/dev/null
+    run_clear_onebox
+    rm -rf *.log *.data config-*.ini &>/dev/null
 }
 
 #####################
