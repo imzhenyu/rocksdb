@@ -737,7 +737,7 @@ function run_start_kill_test()
     ${DSN_ROOT}/bin/rrdb_kill_test/rrdb_kill_test $CONFIG $APP_NAME &>rrdb_kill_test.log &
     ps -ef | grep rrdb_kill_test | grep -v grep
 
-    ./kill_test.sh $META_COUNT $REPLICA_COUNT $KILL_TYPE &>kill_test.log &
+    ./kill_test.sh $META_COUNT $REPLICA_COUNT $APP_NAME $KILL_TYPE &>kill_test.log &
     ps -ef | grep kill_test.sh | grep -v grep
 
     run_list_onebox

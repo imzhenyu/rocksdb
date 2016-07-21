@@ -1,14 +1,15 @@
 #!/bin/bash
 
-if [ $# -ne 3 ]
+if [ $# -ne 4 ]
 then
-    echo "USAGE: $0 <meta-count> <replica-count> <kill-type>"
+    echo "USAGE: $0 <meta-count> <replica-count> <app-name> <kill-type>"
     echo "  kill-type: meta | replica | all"
     exit -1
 fi
 META_COUNT=$1
 REPLICA_COUNT=$2
-KILL_TYPE=$3
+APP_NAME=$3
+KILL_TYPE=$4
 if [ "$KILL_TYPE" != "meta" -a "$KILL_TYPE" != "replica" -a "$KILL_TYPE" != "all" ]
 then
     echo "ERROR: invalid kill-type, should be: meta | replica | all"
@@ -18,6 +19,8 @@ fi
 CUR_DIR=`pwd`
 LEASE_TIMEOUT=20
 WAIT_SECONDS=0
+SHELL_INPUT=.shell.input
+echo "app $APP_NAME -detailed" >$SHELL_INPUT
 while true
 do
   if ! ps -ef | grep "rrdb_kill_test" |  grep -v grep &>/dev/null
@@ -37,7 +40,7 @@ do
     exit -1
   fi
 
-  NUM=`./run.sh shell <shell.input | awk '{print $3}' | grep '/' | grep -o '^[0-9]*' | grep -v '3' | wc -l`
+  NUM=`./run.sh shell <$SHELL_INPUT | awk '{print $3}' | grep '/' | grep -o '^[0-9]*' | grep -v '3' | wc -l`
   if [ $NUM -ne 0 ]
   then
     if [ $WAIT_SECONDS -gt 1200 ]
@@ -54,7 +57,7 @@ do
   else
     echo "[`date`] healthy now, waited for $WAIT_SECONDS seconds"
     echo "---------------------------"
-    ./run.sh shell <shell.input | grep '^[0-9]'
+    ./run.sh shell <$SHELL_INPUT | grep '^[0-9]'
     echo "---------------------------"
     echo
   fi
