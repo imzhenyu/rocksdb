@@ -728,7 +728,8 @@ function run_start_kill_test()
         shift
     done
 
-    run_clear_onebox
+    run_clear_kill_test
+
     run_start_onebox -m $META_COUNT -r $REPLICA_COUNT -a $APP_NAME -p $PARTITION_COUNT
 
     cd $ROOT

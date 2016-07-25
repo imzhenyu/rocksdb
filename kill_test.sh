@@ -20,12 +20,16 @@ CUR_DIR=`pwd`
 LEASE_TIMEOUT=20
 WAIT_SECONDS=0
 SHELL_INPUT=.shell.input
-echo "app $APP_NAME -detailed" >$SHELL_INPUT
+echo "cluster_info" >$SHELL_INPUT
+echo "app $APP_NAME -detailed" >>$SHELL_INPUT
 while true
 do
   if ! ps -ef | grep "rrdb_kill_test" |  grep -v grep &>/dev/null
   then
     echo "[`date`] rrdb_kill_test process is not exist, stop cluster..."
+    echo "---------------------------"
+    ./run.sh shell <$SHELL_INPUT | grep '^[0-9]\|^primary_meta_server'
+    echo "---------------------------"
     echo
     ./run.sh stop_onebox
     exit -1
@@ -34,6 +38,9 @@ do
   if [ "`find onebox -name 'core.*' | wc -l `" -gt 0 -o "`find onebox -name 'core' | wc -l `" -gt 0 ]
   then
     echo "[`date`] coredump generated, stop rrdb_kill_test and cluster..."
+    echo "---------------------------"
+    ./run.sh shell <$SHELL_INPUT | grep '^[0-9]\|^primary_meta_server'
+    echo "---------------------------"
     echo
     sleep 2
     ps -ef | grep rrdb_kill_test | grep -v grep | awk '{print $2}' | xargs kill
@@ -41,12 +48,16 @@ do
     exit -1
   fi
 
+  ALL=`./run.sh shell <$SHELL_INPUT | awk '{print $3}' | grep '/' | wc -l`
   NUM=`./run.sh shell <$SHELL_INPUT | awk '{print $3}' | grep '/' | grep -o '^[0-9]*' | grep -v '3' | wc -l`
-  if [ $NUM -ne 0 ]
+  if [ $ALL -gt 0 -a $NUM -ne 0 ]
   then
     if [ $WAIT_SECONDS -gt 1200 ]
     then
       echo "[`date`] not healthy for $WAIT_SECONDS seconds, stop rrdb_kill_test and cluster..."
+      echo "---------------------------"
+      ./run.sh shell <$SHELL_INPUT | grep '^[0-9]\|^primary_meta_server'
+      echo "---------------------------"
       echo
       ps -ef | grep rrdb_kill_test | grep -v grep | awk '{print $2}' | xargs kill
       ./run.sh stop_onebox
@@ -58,7 +69,7 @@ do
   else
     echo "[`date`] healthy now, waited for $WAIT_SECONDS seconds"
     echo "---------------------------"
-    ./run.sh shell <$SHELL_INPUT | grep '^[0-9]'
+    ./run.sh shell <$SHELL_INPUT | grep '^[0-9]\|^primary_meta_server'
     echo "---------------------------"
     echo
   fi
