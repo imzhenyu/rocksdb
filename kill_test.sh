@@ -31,10 +31,11 @@ do
     exit -1
   fi
 
-  if [ "`find onebox -name 'core.*' | wc -l `" -gt 0 ]
+  if [ "`find onebox -name 'core.*' | wc -l `" -gt 0 -o "`find onebox -name 'core' | wc -l `" -gt 0 ]
   then
     echo "[`date`] coredump generated, stop rrdb_kill_test and cluster..."
     echo
+    sleep 2
     ps -ef | grep rrdb_kill_test | grep -v grep | awk '{print $2}' | xargs kill
     ./run.sh stop_onebox
     exit -1
@@ -91,20 +92,20 @@ do
   echo "[`date`] sleep for $SECONDS seconds to stop $TYPE #$TASK_ID"
   sleep $SECONDS
   ###
-  echo "[`date`] stop replica #$TASK_ID"
+  echo "[`date`] stop $TYPE #$TASK_ID"
   ./run.sh stop_onebox_instance $OPT $TASK_ID
   ###
   SECONDS=$((RANDOM % LEASE_TIMEOUT + 1))
   echo "[`date`] sleep for $SECONDS seconds to start $TYPE #$TASK_ID"
   sleep $SECONDS
   ###
-  echo "[`date`] start replica #$TASK_ID"
+  echo "[`date`] start $TYPE #$TASK_ID"
   ./run.sh start_onebox_instance $OPT $TASK_ID
   ###
   echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<"
   echo
 
-  echo "[`date`] wait for healthy..."
+  echo "[`date`] sleep for 20 seconds, and wait for healthy..."
   echo
   sleep $LEASE_TIMEOUT
   WAIT_SECONDS=$LEASE_TIMEOUT

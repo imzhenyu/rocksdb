@@ -735,14 +735,15 @@ function run_start_kill_test()
     CONFIG=${ROOT}/config-kill-test.ini
     sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-kill-test.ini >$CONFIG
     ${DSN_ROOT}/bin/rrdb_kill_test/rrdb_kill_test $CONFIG $APP_NAME &>rrdb_kill_test.log &
-    ps -ef | grep rrdb_kill_test | grep -v grep
+    sleep 0.2
 
     ./kill_test.sh $META_COUNT $REPLICA_COUNT $APP_NAME $KILL_TYPE &>kill_test.log &
-    ps -ef | grep kill_test.sh | grep -v grep
-
-    run_list_onebox
 
     echo
+    echo "------------------------------"
+    run_list_onebox
+    ps -ef | grep rrdb_kill_test | grep -v grep
+    ps -ef | grep kill_test.sh | grep -v grep
     echo "------------------------------"
     echo "Server dir: ./onebox"
     echo "Client dir: ./rrdb_kill_test.data"
