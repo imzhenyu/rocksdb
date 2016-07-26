@@ -20,7 +20,9 @@ CUR_DIR=`pwd`
 LEASE_TIMEOUT=20
 WAIT_SECONDS=0
 SHELL_INPUT=.shell.input
+SHELL_OUTPUT=.shell.output
 echo "cluster_info" >$SHELL_INPUT
+echo "nodes" >>$SHELL_INPUT
 echo "app $APP_NAME -detailed" >>$SHELL_INPUT
 while true
 do
@@ -48,9 +50,11 @@ do
     exit -1
   fi
 
-  ALL=`./run.sh shell <$SHELL_INPUT | awk '{print $3}' | grep '/' | wc -l`
-  NUM=`./run.sh shell <$SHELL_INPUT | awk '{print $3}' | grep '/' | grep -o '^[0-9]*' | grep -v '3' | wc -l`
-  if [ $ALL -gt 0 -a $NUM -ne 0 ]
+  ./run.sh shell <$SHELL_INPUT &>$SHELL_OUTPUT
+  UNALIVE_COUNT=`cat $SHELL_OUTPUT | grep UNALIVE | wc -l`
+  PARTITION_COUNT=`cat $SHELL_OUTPUT | awk '{print $3}' | grep '/' | wc -l`
+  UNHEALTHY_COUNT=`cat $SHELL_OUTPUT | awk '{print $3}' | grep '/' | grep -o '^[0-9]*' | grep -v '3' | wc -l`
+  if [ $UNALIVE_COUNT -ne 0 -o $PARTITION_COUNT -eq 0 -o $UNHEALTHY_COUNT -ne 0 ]
   then
     if [ $WAIT_SECONDS -gt 1200 ]
     then
