@@ -50,7 +50,8 @@ int rrdb_client_impl::set(
         const std::string& hash_key,
         const std::string& sort_key,
         const std::string& value,
-        int timeout_milliseconds,
+        int64_t timeout_milliseconds,
+        int64_t ttl_milliseconds,
         internal_info* info
         )
 {
@@ -64,6 +65,11 @@ int rrdb_client_impl::set(
     update_request req;
     rrdb_generate_key(req.key, hash_key, sort_key);
     req.value.assign(value.c_str(), 0, value.size());
+    if (ttl_milliseconds == 0)
+        req.expire_ts = ttl_milliseconds;
+    else
+        req.expire_ts = ttl_milliseconds+1000*(int64_t)(time(nullptr));
+
     auto hash = rrdb_key_hash(req.key);
     auto pr = _client->put_sync(req, std::chrono::milliseconds(timeout_milliseconds), hash);
     if (info != nullptr)
@@ -90,7 +96,7 @@ int rrdb_client_impl::get(
         const std::string& hash_key,
         const std::string& sort_key,
         std::string& value,
-        int timeout_milliseconds,
+        int64_t timeout_milliseconds,
         internal_info* info
         )
 {
@@ -131,7 +137,7 @@ int rrdb_client_impl::get(
 int rrdb_client_impl::del(
         const std::string& hash_key,
         const std::string& sort_key,
-        int timeout_milliseconds,
+        int64_t timeout_milliseconds,
         internal_info* info
         )
 {

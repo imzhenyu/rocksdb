@@ -457,17 +457,26 @@ void get_op(int Argc, std::string Argv[], irrdb_client* client)
 
 void set_op(int Argc, std::string Argv[], irrdb_client* client)
 {
-    if ( Argc != 4 )
+    if ( Argc != 4 && Argc != 5)
     {
-        std::cout << "USAGE: set <hash_key> <sort_key> <value>" << std::endl;
         return;
+        std::cout << "USAGE: set <hash_key> <sort_key> <value> [ttl_in_ms]" << std::endl;
     }
 
     std::string hash_key = Argv[1];
     std::string sort_key = Argv[2];
     std::string value = Argv[3];
+    int64_t ttl = 0;
     irrdb_client::internal_info info;
-    int ret = client->set(hash_key, sort_key, value, 5000, &info);
+
+    if (Argc == 5) {
+        ttl = atol(Argv[4].c_str());
+        if (ttl == 0) {
+            fprintf(stderr, "ERROR: invalid ttl time, should not be 0\n");
+            return;
+        }
+    }
+    int ret = client->set(hash_key, sort_key, value, 5000, ttl, &info);
     if (ret != RRDB_ERR_OK) {
         fprintf(stderr, "ERROR: %s\n", client->get_error_string(ret));
     }

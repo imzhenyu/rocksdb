@@ -20,7 +20,8 @@ public:
         const std::string& hashkey,
         const std::string& sortkey,
         const std::string& value,
-        int timeout_milliseconds = 5000,
+        int64_t timeout_milliseconds = 5000,
+        int64_t ttl_milliseconds = 0,
         internal_info* info = NULL
         ) override;
 
@@ -28,14 +29,14 @@ public:
         const std::string& hashkey,
         const std::string& sortkey,
         std::string& value,
-        int timeout_milliseconds = 5000,
+        int64_t timeout_milliseconds = 5000,
         internal_info* info = NULL
         ) override;
 
     virtual int del(
         const std::string& hashkey,
         const std::string& sortkey,
-        int timeout_milliseconds = 5000,
+        int64_t timeout_milliseconds = 5000,
         internal_info* info = NULL
         ) override;
 

@@ -6,6 +6,7 @@ struct update_request
 {
     1:dsn.blob      key;
     2:dsn.blob      value;
+    3:i64           expire_ts;
 }
 
 struct update_response

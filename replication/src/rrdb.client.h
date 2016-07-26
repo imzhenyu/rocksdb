@@ -12,6 +12,7 @@ public:
     explicit rrdb_client(::dsn::rpc_address server) { _server = server; }
     virtual ~rrdb_client() {}
     
+ 
     // ---------- call RPC_RRDB_RRDB_PUT ------------
     // - synchronous 
     std::pair< ::dsn::error_code, update_response> put_sync(
@@ -21,7 +22,7 @@ public:
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
-        return ::dsn::rpc::wait_and_unwrap<update_response>(
+        return ::dsn::rpc::wait_and_unwrap< update_response>(
             ::dsn::rpc::call(
                 server_addr.unwrap_or(_server),
                 RPC_RRDB_RRDB_PUT,
@@ -35,7 +36,7 @@ public:
             );
     }
     
-    // - asynchronous with on-stack update_request and int  
+    // - asynchronous with on-stack update_request and update_response  
     template<typename TCallback>
     ::dsn::task_ptr put(
         const update_request& args,
@@ -57,7 +58,7 @@ public:
                     reply_hash
                     );
     }
-
+ 
     // ---------- call RPC_RRDB_RRDB_REMOVE ------------
     // - synchronous 
     std::pair< ::dsn::error_code, update_response> remove_sync(
@@ -67,7 +68,7 @@ public:
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
-        return ::dsn::rpc::wait_and_unwrap<update_response>(
+        return ::dsn::rpc::wait_and_unwrap< update_response>(
             ::dsn::rpc::call(
                 server_addr.unwrap_or(_server),
                 RPC_RRDB_RRDB_REMOVE,
@@ -81,7 +82,7 @@ public:
             );
     }
     
-    // - asynchronous with on-stack ::dsn::blob and int  
+    // - asynchronous with on-stack ::dsn::blob and update_response  
     template<typename TCallback>
     ::dsn::task_ptr remove(
         const ::dsn::blob& args,
@@ -103,7 +104,7 @@ public:
                     reply_hash
                     );
     }
-
+ 
     // ---------- call RPC_RRDB_RRDB_GET ------------
     // - synchronous 
     std::pair< ::dsn::error_code, read_response> get_sync(
@@ -113,7 +114,7 @@ public:
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
-        return ::dsn::rpc::wait_and_unwrap<read_response>(
+        return ::dsn::rpc::wait_and_unwrap< read_response>(
             ::dsn::rpc::call(
                 server_addr.unwrap_or(_server),
                 RPC_RRDB_RRDB_GET,

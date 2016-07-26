@@ -1,8 +1,10 @@
 # pragma once
 
 # include "rrdb.server.h"
+# include "key_ttl_compaction_filter.h"
 # include <rocksdb/db.h>
 # include <vector>
+
 # include <dsn/cpp/replicated_service_app.h>
 
 namespace dsn {
@@ -105,6 +107,7 @@ namespace dsn {
             std::string                  _replica_name;
             std::string                  _data_dir;
 
+            rocksdb::KeyWithTTLCompactionFilter _key_ttl_compaction_filter;
             rocksdb::Options             _db_opts;
             rocksdb::WriteOptions        _wt_opts;
             rocksdb::ReadOptions         _rd_opts;

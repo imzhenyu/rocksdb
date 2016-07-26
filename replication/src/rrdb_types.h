@@ -27,22 +27,26 @@ class update_response;
 class read_response;
 
 typedef struct _update_request__isset {
-  _update_request__isset() : key(false), value(false) {}
+  _update_request__isset() : key(false), value(false), expire_ts(false) {}
   bool key :1;
   bool value :1;
+  bool expire_ts :1;
 } _update_request__isset;
 
 class update_request {
  public:
 
   update_request(const update_request&);
+  update_request(update_request&&);
   update_request& operator=(const update_request&);
-  update_request() {
+  update_request& operator=(update_request&&);
+  update_request() : expire_ts(0) {
   }
 
   virtual ~update_request() throw();
    ::dsn::blob key;
    ::dsn::blob value;
+  int64_t expire_ts;
 
   _update_request__isset __isset;
 
@@ -50,11 +54,15 @@ class update_request {
 
   void __set_value(const  ::dsn::blob& val);
 
+  void __set_expire_ts(const int64_t val);
+
   bool operator == (const update_request & rhs) const
   {
     if (!(key == rhs.key))
       return false;
     if (!(value == rhs.value))
+      return false;
+    if (!(expire_ts == rhs.expire_ts))
       return false;
     return true;
   }
@@ -91,7 +99,9 @@ class update_response {
  public:
 
   update_response(const update_response&);
+  update_response(update_response&&);
   update_response& operator=(const update_response&);
+  update_response& operator=(update_response&&);
   update_response() : error(0), app_id(0), partition_index(0), decree(0), server() {
   }
 
@@ -161,7 +171,9 @@ class read_response {
  public:
 
   read_response(const read_response&);
+  read_response(read_response&&);
   read_response& operator=(const read_response&);
+  read_response& operator=(read_response&&);
   read_response() : error(0), app_id(0), partition_index(0), server() {
   }
 

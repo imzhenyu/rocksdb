@@ -222,8 +222,19 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
             {
                 update_request update;
                 ::dsn::unmarshall(request, update);
-                rocksdb::Slice skey(update.key.data(), update.key.length());
-                rocksdb::Slice svalue(update.value.data(), update.value.length());
+
+                rocksdb::Slice key(update.key.data(), update.key.length());
+                rocksdb::SliceParts skey(&key, 1);
+                
+                // if update.ttl == 0, means no ttl
+                int64_t expire_ts = update.expire_ts;
+                char buf[8];
+                *(int64_t*)buf = htobe64(expire_ts);
+                rocksdb::Slice values[2];
+                values[0] = rocksdb::Slice(buf, 8);
+                values[1] = rocksdb::Slice(update.value.data(), update.value.length());
+                rocksdb::SliceParts svalue(values, 2);
+
                 _batch.Put(skey, svalue);
                 _batch_repliers.emplace_back(dsn_msg_create_response(request));
             }
@@ -292,6 +303,22 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_r
     rocksdb::Slice skey(key.data(), key.length());
     std::string* value = new std::string();
     rocksdb::Status status = _db->Get(_rd_opts, skey, value);
+
+    if (status.ok())
+    {
+        dassert(value->size() >= 8u, "rocksdb's value size should no less than 8");
+        int64_t expire_time = be64toh( *(int64_t*)value->data() );
+        if (expire_time > 0)
+        {
+            int64_t now_time = (int64_t)time(nullptr) * 1000;
+            if (now_time >= expire_time)
+            {
+                // expired
+                status = rocksdb::Status::NotFound();
+            }
+        }
+    }
+
     if (!status.ok() && !status.IsNotFound())
     {
         derror("%s: read rocksdb failed, error = %s",
@@ -299,11 +326,11 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_r
     }
 
     resp.error = status.code();
-    if (status.ok() && value->size() > 0)
+    if (status.ok() && value->size() > 8u)
     {
         // tricy code to avoid memory copy
         std::shared_ptr<char> b(&value->front(), [value](char*){delete value;});
-        resp.value.assign(b, 0, value->size());
+        resp.value.assign(b, 8, value->size() - 8);
     }
     else
     {
@@ -321,6 +348,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_r
     rocksdb::Options opts = _db_opts;
     opts.create_if_missing = true;
     opts.error_if_exists = false;
+    opts.compaction_filter = &_key_ttl_compaction_filter;
 
     auto path = utils::filesystem::path_combine(_data_dir, "rdb");
     auto status = rocksdb::DB::Open(opts, path, &_db);

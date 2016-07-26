@@ -53,6 +53,10 @@ public:
     /// the value we want to store.
     /// \param timeout_milliseconds
     /// if wait longer than this value, will return time out error
+    /// \param ttl_milliseconds
+    /// time to live of this value, if expired, will return not found; 0 means no ttl
+    /// \param info
+    /// internal info of this query, helpful for trace and debug
     /// \return
     /// int, the error indicates whether or not the operation is succeeded.
     /// this error can be converted to a string using get_error_string()
@@ -61,7 +65,8 @@ public:
         const std::string& hashkey,
         const std::string& sortkey,
         const std::string& value,
-        int timeout_milliseconds = 5000,
+        int64_t timeout_milliseconds = 5000,
+        int64_t ttl_milliseconds = 0,
         internal_info* info = NULL
         ) = 0;
 
@@ -77,6 +82,8 @@ public:
     /// the returned value will be put into it.
     /// \param timeout_milliseconds
     /// if wait longer than this value, will return time out error
+    /// \param info
+    /// internal info of this query, helpful for trace and debug
     /// \return
     /// int, the error indicates whether or not the operation is succeeded.
     /// this error can be converted to a string using get_error_string()
@@ -85,7 +92,7 @@ public:
         const std::string& hashkey,
         const std::string& sortkey,
         std::string& value,
-        int timeout_milliseconds = 5000,
+        int64_t timeout_milliseconds = 5000,
         internal_info* info = NULL
         ) = 0;
 
@@ -99,6 +106,8 @@ public:
     /// all the k-v under hashkey will be sorted by sortkey.
     /// \param timeout_milliseconds
     /// if wait longer than this value, will return time out error
+    /// \param info
+    /// internal info of this query, helpful for trace and debug
     /// \return
     /// int, the error indicates whether or not the operation is succeeded.
     /// this error can be converted to a string using get_error_string()
@@ -106,7 +115,7 @@ public:
     virtual int del(
         const std::string& hashkey,
         const std::string& sortkey,
-        int timeout_milliseconds = 5000,
+        int64_t timeout_milliseconds = 5000,
         internal_info* info = NULL
         ) = 0;
 

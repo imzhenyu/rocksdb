@@ -58,7 +58,7 @@ void do_set()
             value.assign(buf);
         }
         irrdb_client::internal_info info;
-        int ret = client->set(hash_key, sort_key, value, 5000, &info);
+        int ret = client->set(hash_key, sort_key, value, 5000, 0, &info);
         if (ret == RRDB_ERR_OK) {
             long cur_time = get_time();
             ddebug("kill_test: SetThread: set succeed: id=%lld, try=%d, time=%ld (gpid=%d.%d, decree=%lld, server=%s)",

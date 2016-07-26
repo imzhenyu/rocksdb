@@ -1,5 +1,6 @@
 // apps
 # include "rrdb.app.example.h"
+# include "rrdb.server.impl.h"
 
 void dsn_app_registration_rrdb()
 {
