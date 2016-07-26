@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <dsn/utility/utils.h>
+#include <dsn/cpp/blob.h>
 
 namespace dsn{ namespace apps{
 
