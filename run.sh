@@ -33,6 +33,10 @@ function usage()
     echo "   stop_onebox_instance      stop rrdb onebox instance"
     echo "   restart_onebox_instance   restart rrdb onebox instance"
     echo
+    echo "   start_kill_test           statr rrdb kill test"
+    echo "   stop_kill_test            stop rrdb kill test"
+    echo "   clear_kill_test           clear rrdb kill test"
+    echo
     echo "   bench                     benchmark test"
     echo "   shell                     run rrdb_cluster shell"
     echo
@@ -259,9 +263,9 @@ function usage_start_onebox()
     echo "Options for subcommand 'start_onebox':"
     echo "   -h|--help         print the help info"
     echo "   -m|--meta_count <num>"
-    echo "                     meta server count"
+    echo "                     meta server count, default is 3"
     echo "   -r|--replica_count <num>"
-    echo "                     replica server count"
+    echo "                     replica server count, default is 3"
     echo "   -a|--app_name <str>"
     echo "                     default app name, default is rrdb.instance0"
     echo "   -p|--partition_count <num>"
@@ -310,6 +314,7 @@ function run_start_onebox()
         echo "ERROR: file ${DSN_ROOT}/bin/rrdb/rrdb not exist"
         exit -1
     fi
+    run_start_zk
     sed "s/@LOCAL_IP@/`hostname -i`/g;s/@META_COUNT@/${META_COUNT}/g;s/@REPLICA_COUNT@/${REPLICA_COUNT}/g;s/@APP_NAME@/${APP_NAME}/g;s/@PARTITION_COUNT@/${PARTITION_COUNT}/g" \
         ${ROOT}/replication/config-server.ini >${ROOT}/config-server.ini
     echo "starting server"
@@ -430,9 +435,8 @@ function run_clear_onebox()
         shift
     done
     run_stop_onebox
-    if [ -d onebox ]; then
-        rm -rf onebox config-server.ini config-client.ini &>/dev/null
-    fi
+    run_clear_zk
+    rm -rf onebox *.log *.data config-*.ini &>/dev/null
 }
 
 #####################
@@ -662,13 +666,165 @@ function run_restart_onebox_instance()
 }
 
 #####################
+## start_kill_test
+#####################
+function usage_start_kill_test()
+{
+    echo "Options for subcommand 'start_kill_test':"
+    echo "   -h|--help         print the help info"
+    echo "   -m|--meta_count <num>"
+    echo "                     meta server count, default is 3"
+    echo "   -r|--replica_count <num>"
+    echo "                     replica server count, default is 5"
+    echo "   -a|--app_name <str>"
+    echo "                     app name, default is rrdb.instance0"
+    echo "   -p|--partition_count <num>"
+    echo "                     app partition count, default is 16"
+    echo "   -t|--kill_type <str>"
+    echo "                     kill type: meta | replica | all, default is all"
+}
+
+function run_start_kill_test()
+{
+    META_COUNT=3
+    REPLICA_COUNT=5
+    APP_NAME=rrdb.instance0
+    PARTITION_COUNT=16
+    KILL_TYPE=all
+    while [[ $# > 0 ]]; do
+        key="$1"
+        case $key in
+            -h|--help)
+                usage_start_kill_test
+                exit 0
+                ;;
+            -m|--meta_count)
+                META_COUNT="$2"
+                shift
+                ;;
+            -r|--replica_count)
+                REPLICA_COUNT="$2"
+                shift
+                ;;
+            -a|--app_name)
+                APP_NAME="$2"
+                shift
+                ;;
+            -p|--partition_count)
+                PARTITION_COUNT="$2"
+                shift
+                ;;
+            -t|--kill_type)
+                KILL_TYPE="$2"
+                shift
+                ;;
+            *)
+                echo "ERROR: unknown option \"$key\""
+                echo
+                usage_start_kill_test
+                exit -1
+                ;;
+        esac
+        shift
+    done
+
+    run_clear_kill_test
+
+    run_start_onebox -m $META_COUNT -r $REPLICA_COUNT -a $APP_NAME -p $PARTITION_COUNT
+
+    cd $ROOT
+    CONFIG=${ROOT}/config-kill-test.ini
+    sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-kill-test.ini >$CONFIG
+    ${DSN_ROOT}/bin/rrdb_kill_test/rrdb_kill_test $CONFIG $APP_NAME &>rrdb_kill_test.log &
+    sleep 0.2
+
+    ./kill_test.sh $META_COUNT $REPLICA_COUNT $APP_NAME $KILL_TYPE &>kill_test.log &
+
+    echo
+    echo "------------------------------"
+    run_list_onebox
+    ps -ef | grep rrdb_kill_test | grep -v grep
+    ps -ef | grep kill_test.sh | grep -v grep
+    echo "------------------------------"
+    echo "Server dir: ./onebox"
+    echo "Client dir: ./rrdb_kill_test.data"
+    echo "Kill   log: ./kill_test.log"
+    echo "------------------------------"
+}
+
+#####################
+## stop_kill_test
+#####################
+function usage_stop_kill_test()
+{
+    echo "Options for subcommand 'stop_kill_test':"
+    echo "   -h|--help         print the help info"
+}
+
+function run_stop_kill_test()
+{
+    while [[ $# > 0 ]]; do
+        key="$1"
+        case $key in
+            -h|--help)
+                usage_stop_kill_test
+                exit 0
+                ;;
+            *)
+                echo "ERROR: unknown option \"$key\""
+                echo
+                usage_stop_kill_test
+                exit -1
+                ;;
+        esac
+        shift
+    done
+
+    ps -ef | grep rrdb_kill_test | awk '{print $2}' | xargs kill &>/dev/null
+    ps -ef | grep kill_test.sh | awk '{print $2}' | xargs kill &>/dev/null
+    run_stop_onebox
+}
+
+#####################
+## clear_kill_test
+#####################
+function usage_clear_kill_test()
+{
+    echo "Options for subcommand 'clear_kill_test':"
+    echo "   -h|--help         print the help info"
+}
+
+function run_clear_kill_test()
+{
+    while [[ $# > 0 ]]; do
+        key="$1"
+        case $key in
+            -h|--help)
+                usage_clear_kill_test
+                exit 0
+                ;;
+            *)
+                echo "ERROR: unknown option \"$key\""
+                echo
+                usage_clear_kill_test
+                exit -1
+                ;;
+        esac
+        shift
+    done
+    run_stop_kill_test
+    run_clear_onebox
+    rm -rf *.log *.data config-*.ini &>/dev/null
+}
+
+#####################
 ## bench
 #####################
 function usage_bench()
 {
     echo "Options for subcommand 'bench':"
     echo "   -h|--help            print the help info"
-    echo "   -c|--config <path>   config file path, default './config-client.ini'"
+    echo "   -c|--config <path>   config file path, default './config-bench.ini'"
     echo "   -t|--type            benchmark type, supporting:"
     echo "                          fillseq_rrdb, fillrandom_rrdb, filluniquerandom_rrdb,"
     echo "                          readrandom_rrdb, deleteseq_rrdb, deleterandom_rrdb"
@@ -684,7 +840,7 @@ function usage_bench()
 
 function run_bench()
 {
-    CONFIG=${ROOT}/config-client.ini
+    CONFIG=${ROOT}/config-bench.ini
     CONFIG_SPECIFIED=0
     TYPE=fillseq_rrdb,readrandom_rrdb
     NUM=100000
@@ -749,7 +905,7 @@ function run_bench()
     done
 
     if [ ${CONFIG_SPECIFIED} -eq 0 ]; then
-        sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-client.ini >${CONFIG}
+        sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-bench.ini >${CONFIG}
     fi
 
     ./rrdb_bench --rrdb_config=${CONFIG} --benchmarks=${TYPE} --rrdb_timeout_ms=${TIMEOUT_MS} \
@@ -855,6 +1011,18 @@ case $cmd in
     restart_onebox_instance)
         shift
         run_restart_onebox_instance $*
+        ;;
+    start_kill_test)
+        shift
+        run_start_kill_test $*
+        ;;
+    stop_kill_test)
+        shift
+        run_stop_kill_test $*
+        ;;
+    clear_kill_test)
+        shift
+        run_clear_kill_test $*
         ;;
     bench)
         shift
