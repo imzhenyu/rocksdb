@@ -19,8 +19,8 @@ fi
 CUR_DIR=`pwd`
 LEASE_TIMEOUT=20
 WAIT_SECONDS=0
-SHELL_INPUT=.shell.input
-SHELL_OUTPUT=.shell.output
+SHELL_INPUT=.kill_test.shell.input
+SHELL_OUTPUT=.kill_test.shell.output
 echo "cluster_info" >$SHELL_INPUT
 echo "nodes" >>$SHELL_INPUT
 echo "app $APP_NAME -detailed" >>$SHELL_INPUT
@@ -52,9 +52,9 @@ do
 
   ./run.sh shell <$SHELL_INPUT &>$SHELL_OUTPUT
   UNALIVE_COUNT=`cat $SHELL_OUTPUT | grep UNALIVE | wc -l`
-  PARTITION_COUNT=`cat $SHELL_OUTPUT | awk '{print $3}' | grep '/' | wc -l`
+  PARTITION_COUNT=`cat $SHELL_OUTPUT | awk '{print $3}' | grep '/' | grep -o '^[0-9]*' | wc -l`
   UNHEALTHY_COUNT=`cat $SHELL_OUTPUT | awk '{print $3}' | grep '/' | grep -o '^[0-9]*' | grep -v '3' | wc -l`
-  if [ $UNALIVE_COUNT -ne 0 -o $PARTITION_COUNT -eq 0 -o $UNHEALTHY_COUNT -ne 0 ]
+  if [ $UNALIVE_COUNT -gt 0 -o $PARTITION_COUNT -eq 0 -o $UNHEALTHY_COUNT -gt 0 ]
   then
     if [ $WAIT_SECONDS -gt 1200 ]
     then
@@ -73,7 +73,7 @@ do
   else
     echo "[`date`] healthy now, waited for $WAIT_SECONDS seconds"
     echo "---------------------------"
-    ./run.sh shell <$SHELL_INPUT | grep '^[0-9]\|^primary_meta_server'
+    cat $SHELL_OUTPUT | grep '^[0-9]\|^primary_meta_server'
     echo "---------------------------"
     echo
   fi

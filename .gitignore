@@ -4,7 +4,7 @@ onebox/
 data/
 rrdb_bench
 rrdb_cluster
-.shell.*
+.kill_test.shell.*
 .zk*
 
 TARGETS
