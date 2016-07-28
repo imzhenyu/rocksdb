@@ -682,6 +682,9 @@ function usage_start_kill_test()
     echo "                     app partition count, default is 16"
     echo "   -t|--kill_type <str>"
     echo "                     kill type: meta | replica | all, default is all"
+    echo "   -s|--sleep_time <num>"
+    echo "                     max sleep time before next kill, default is 300"
+    echo "                     actual sleep time will be a random value in range of [1, sleep_time]"
 }
 
 function run_start_kill_test()
@@ -691,6 +694,7 @@ function run_start_kill_test()
     APP_NAME=rrdb.instance0
     PARTITION_COUNT=16
     KILL_TYPE=all
+    SLEEP_TIME=300
     while [[ $# > 0 ]]; do
         key="$1"
         case $key in
@@ -718,6 +722,10 @@ function run_start_kill_test()
                 KILL_TYPE="$2"
                 shift
                 ;;
+            -s|--sleep_time)
+                SLEEP_TIME="$2"
+                shift
+                ;;
             *)
                 echo "ERROR: unknown option \"$key\""
                 echo
@@ -729,18 +737,24 @@ function run_start_kill_test()
     done
 
     run_clear_kill_test
+    echo
 
     run_start_onebox -m $META_COUNT -r $REPLICA_COUNT -a $APP_NAME -p $PARTITION_COUNT
+    echo
 
     cd $ROOT
-    CONFIG=${ROOT}/config-kill-test.ini
+    CONFIG=config-kill-test.ini
     sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-kill-test.ini >$CONFIG
-    ${DSN_ROOT}/bin/rrdb_kill_test/rrdb_kill_test $CONFIG $APP_NAME &>rrdb_kill_test.log &
+    ln -sf ${DSN_ROOT}/bin/rrdb_kill_test/rrdb_kill_test
+    echo "./rrdb_kill_test $CONFIG $APP_NAME &>rrdb_kill_test.log &"
+    ./rrdb_kill_test $CONFIG $APP_NAME &>rrdb_kill_test.log &
     sleep 0.2
-
-    ./kill_test.sh $META_COUNT $REPLICA_COUNT $APP_NAME $KILL_TYPE &>kill_test.log &
-
     echo
+
+    echo "./kill_test.sh $META_COUNT $REPLICA_COUNT $APP_NAME $KILL_TYPE $SLEEP_TIME &>kill_test.log &"
+    ./kill_test.sh $META_COUNT $REPLICA_COUNT $APP_NAME $KILL_TYPE $SLEEP_TIME &>kill_test.log &
+    echo
+
     echo "------------------------------"
     run_list_onebox
     ps -ef | grep rrdb_kill_test | grep -v grep
