@@ -378,15 +378,16 @@ void use_op(int Argc, std::string Argv[], std::string &app_name)
 
 void hash_op(int Argc, std::string Argv[], std::string& app_name, dsn::replication::replication_ddl_client &client_of_dsn)
 {
-    if ( Argc != 2 )
+    if ( Argc != 3 )
     {
-        std::cout << "USAGE: hash <hash_key>" << std::endl;
+        std::cout << "USAGE: hash <hash_key> <sort_key>" << std::endl;
         return;
     }
     std::string hash_key = Argv[1];
+    std::string sort_key = Argv[2];
 
     dsn::blob key;
-    dsn::apps::rrdb_generate_key(key, hash_key, "");
+    dsn::apps::rrdb_generate_key(key, hash_key, sort_key);
     uint64_t key_hash = dsn::apps::rrdb_key_hash(key);
 
     int width = strlen("partition_index");
