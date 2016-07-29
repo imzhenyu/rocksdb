@@ -1,6 +1,7 @@
 #include <cctype>
 #include <algorithm>
 #include <string>
+#include <stdint.h>
 
 #include <dsn/cpp/auto_codes.h>
 #include "rrdb_client_impl.h"
@@ -54,8 +55,11 @@ int rrdb_client_impl::set(
         )
 {
     // check params
-    if(hash_key.empty())
+    if(hash_key.size() > UINT16_MAX)
+    {
+        derror("invalid hash key: hash key length should be no more than UINT16_MAX, but %d", (int)hash_key.size());
         return RRDB_ERR_INVALID_HASH_KEY;
+    }
 
     update_request req;
     rrdb_generate_key(req.key, hash_key, sort_key);
@@ -91,8 +95,11 @@ int rrdb_client_impl::get(
         )
 {
     // check params
-    if(hash_key.empty())
+    if(hash_key.size() > UINT16_MAX)
+    {
+        derror("invalid hash key: hash key length should be no more than UINT16_MAX, but %d", (int)hash_key.size());
         return RRDB_ERR_INVALID_HASH_KEY;
+    }
 
     dsn::blob req;
     rrdb_generate_key(req, hash_key, sort_key);
@@ -129,8 +136,11 @@ int rrdb_client_impl::del(
         )
 {
     // check params
-    if(hash_key.empty())
+    if(hash_key.size() > UINT16_MAX)
+    {
+        derror("invalid hash key: hash key length should be no more than UINT16_MAX, but %d", (int)hash_key.size());
         return RRDB_ERR_INVALID_HASH_KEY;
+    }
 
     dsn::blob req;
     rrdb_generate_key(req, hash_key, sort_key);
