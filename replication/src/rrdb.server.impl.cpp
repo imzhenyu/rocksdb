@@ -207,8 +207,18 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
     if (count == 0)
     {
         // write fake data
-        // TODO(qinzuoyan): maybe no need to write fake date, just write empty batch
-        _batch.Put(rocksdb::Slice(), rocksdb::Slice());
+        // TODO(qinzuoyan): maybe no need to write fake data, just write empty batch
+
+        rocksdb::Slice empty_key;
+        rocksdb::SliceParts key_slice_parts(&empty_key, 1);
+
+        char buffer[8];
+        memset(buffer, 0, sizeof(buffer));
+        rocksdb::Slice values[2];
+        values[0] = rocksdb::Slice(buffer, 8);
+        rocksdb::SliceParts value_slice_parts(values, 2);
+
+        _batch.Put(key_slice_parts, value_slice_parts);
         _batch_repliers.emplace_back(nullptr);
     }
     else

@@ -3,6 +3,7 @@
 
 #include <queue>
 #include <deque>
+#include <vector>
 #include "proxy_layer.h"
 
 namespace dsn { namespace apps { class rrdb_client; }}
@@ -104,6 +105,7 @@ private:
     DECLARE_REDIS_HANDLER(set)
     DECLARE_REDIS_HANDLER(get)
     DECLARE_REDIS_HANDLER(del)
+    DECLARE_REDIS_HANDLER(setex)
     DECLARE_REDIS_HANDLER(default_handler)
 
     //function for pipeline reply

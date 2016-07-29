@@ -3,6 +3,7 @@
 #include <boost/asio.hpp>
 
 #include "rrdb.client.h"
+#include "utilities.h"
 #include "../proxy_lib/proxy_layer.h"
 #include "../proxy_lib/redis_parser.h"
 
@@ -317,6 +318,45 @@ private:
     std::unique_ptr<dsn::proxy::proxy_stub> _proxy;
 };
 
+void util_test()
+{
+    std::cout << "test util functions" << std::endl;
+    const char* int_buffers[] =
+    {
+        "+",
+        "-",
+        "aabcc",
+        "+aa4aa",
+        "-23455a",
+        "+12345",
+        "-678910",
+        "1223334",
+        nullptr
+    };
+
+    struct { bool succeed; int result; } call_results[] = {
+        {false, 0},
+        {false, 0},
+        {false, 0},
+        {false, 0},
+        {false, 0},
+        {true, 12345},
+        {true, -678910},
+        {true, 1223334}
+    };
+
+    for (int i=0; int_buffers[i]; ++i)
+    {
+        int result;
+        bool succeed = buf2int(int_buffers[i], strlen(int_buffers[i]), result);
+
+        ASSERT_EQ(call_results[i].succeed, succeed);
+        if (result == true) {
+            ASSERT_EQ(call_results[i].result, result);
+        }
+    }
+}
+
 void connection_test()
 {
     io_service ios;
@@ -335,6 +375,7 @@ void connection_test()
     char got_reply[1024];
     //basic pipeline
     {
+        std::cout << "test basic pipelines" << std::endl;
         auto ec2 = socket.connect(remote_ep, ec);
         ASSERT_TRUE(!ec2);
 
@@ -357,6 +398,7 @@ void connection_test()
 
     // then let's get the value
     {
+        std::cout << "test get values after previous pipeline write" << std::endl;
         const char* req = "*2\r\n$3\r\nGET\r\n$3\r\nfoo\r\n";
         size_t req_length = strlen(req);
         boost::asio::write(socket, boost::asio::buffer(req, req_length));
@@ -369,8 +411,47 @@ void connection_test()
         ASSERT_EQ( strncmp(got_reply, resp, got_length), 0);
     }
 
+    // then ttl test of set key
+    {
+        std::cout << "test the key with ttl" << std::endl;
+        const char* req = "*4\r\n$5\r\nSETEX\r\n$3\r\nfo1\r\n$1\r\n4\r\n$3\r\nbar\r\n"
+                          "*4\r\n$5\r\nSETEX\r\n$3\r\nfo2\r\n$4\r\n9999\r\n$3\r\nbar\r\n"
+                          "*3\r\n$3\r\nSET\r\n$3\r\nfo3\r\n$3\r\nbar\r\n";
+        size_t req_length = strlen(req);
+        boost::asio::write(socket, boost::asio::buffer(req, req_length));
+
+        const char* resps = "+OK\r\n"
+                            "+OK\r\n"
+                            "+OK\r\n";
+        size_t got_length = boost::asio::read(socket, boost::asio::buffer(got_reply, strlen(resps)));
+        got_reply[got_length] = 0;
+        ddebug("got length: %u, got reply: %s", got_length, got_reply);
+        ASSERT_EQ(got_length, strlen(resps));
+        ASSERT_EQ(strncmp(got_reply, resps, got_length), 0);
+    }
+
+    {
+        std::cout << "test read from ttl key" << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        const char* req = "*2\r\n$3\r\nGET\r\n$3\r\nfo1\r\n"
+                          "*2\r\n$3\r\nGET\r\n$3\r\nfo2\r\n"
+                          "*2\r\n$3\r\nGET\r\n$3\r\nfo3\r\n";
+        size_t req_length = strlen(req);
+        boost::asio::write(socket, boost::asio::buffer(req, req_length));
+
+        const char* resps = "$-1\r\n"
+                            "$3\r\nbar\r\n"
+                            "$3\r\nbar\r\n";
+        size_t got_length = boost::asio::read(socket, boost::asio::buffer(got_reply, strlen(resps)));
+        got_reply[got_length] = 0;
+        ddebug("got length: %u, got reply: %s", got_length, got_reply);
+        ASSERT_EQ(got_length, strlen(resps));
+        ASSERT_EQ(strncmp(got_reply, resps, got_length), 0);
+    }
+
     //let's send partitial message then close the socket
     {
+        std::cout << "send partial message then close socket" << std::endl;
         const char* req = "*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$4\r\nbar1\r\n"
                           "*3\r\n$3\r\nSET\r\n$3\r\nfo";
         size_t req_length = strlen(req);
@@ -393,6 +474,8 @@ int main()
 {
     dsn::register_app<proxy_app>("proxy");
     dsn_run_config("config.ini", false);
+
+    util_test();
     parser_test();
     connection_test();
     dsn_exit(0);

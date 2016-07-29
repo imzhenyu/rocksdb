@@ -9,7 +9,7 @@ public:
     KeyWithTTLCompactionFilter() {}
     virtual bool Filter(int/*level*/, const Slice &key, const Slice &existing_value, std::string *new_value, bool *value_changed) const override
     {
-        assert(existing_value.size() < sizeof(int64_t));
+        assert(existing_value.size() >= sizeof(int64_t));
         int64_t expire_timestamp = be64toh( *((int64_t*)(existing_value.data())) );
         if (expire_timestamp <= 0)
             return false;

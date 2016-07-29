@@ -2,6 +2,7 @@
 #include "redis_parser.h"
 #include "rrdb.client.h"
 #include "key_utils.h"
+#include "utilities.h"
 
 # ifdef __TITLE__
 # undef __TITLE__
@@ -16,7 +17,8 @@ namespace dsn { namespace proxy { namespace redis {
 std::unordered_map<std::string, redis_parser::redis_call_handler> redis_parser::s_dispatcher = {
     {"SET", redis_parser::g_set},
     {"GET", redis_parser::g_get},
-    {"DEL", redis_parser::g_del}
+    {"DEL", redis_parser::g_del},
+    {"SETEX", redis_parser::g_setex},
 };
 
 redis_parser::redis_call_handler redis_parser::get_handler(const char *command, unsigned int length)
@@ -385,9 +387,86 @@ void redis_parser::set(redis_parser::message_entry& entry)
         dsn::blob null_blob;
         dsn::apps::rrdb_generate_key(req.key, request.buffers[1].data, null_blob);
         req.value = request.buffers[2].data;
+        req.expire_ts = 0;
         auto hash = dsn::apps::rrdb_key_hash(req.key);
         //TODO: set the timeout
         client->put(req, on_set_reply, std::chrono::milliseconds(2000), proxy_session::hash(), hash);
+    }
+}
+
+void redis_parser::setex(message_entry &entry)
+{
+    redis_request& redis_req = entry.request;
+    //setex key ttl_SECONDS value
+    if (redis_req.buffers.size() != 4)
+    {
+        redis_simple_string result;
+        result.is_error = true;
+        result.message = "ERR invalid command";
+        reply_message(entry, result);
+    }
+    else
+    {
+        redis_simple_string result;
+        dsn::blob& ttl_blob = redis_req.buffers[2].data;
+        int ttl_seconds;
+        if ( !buf2int(ttl_blob.data(), ttl_blob.length(), ttl_seconds) )
+        {
+            result.is_error = true;
+            result.message = "ERR invalid command";
+            reply_message(entry, result);
+            return;
+        }
+        if (ttl_seconds <= 0)
+        {
+            result.is_error = true;
+            result.message = "ERR_invalid command";
+            reply_message(entry, result);
+            return;
+        }
+
+        std::shared_ptr<proxy_session> ref_this = shared_from_this();
+        auto on_setex_reply = [ref_this, this, &entry](dsn::error_code ec, dsn_message_t, dsn_message_t response)
+        {
+            check_hashed_access();
+            if (status == removed)
+                return;
+
+            redis_simple_string result;
+            if (dsn::ERR_OK != ec)
+            {
+                result.is_error = true;
+                result.message = std::string("ERR ") + ec.to_string();
+                reply_message(entry, result);
+                return;
+            }
+
+            dsn::apps::update_response rrdb_response;
+            dsn::unmarshall(response, rrdb_response);
+            if (rrdb_response.error != 0)
+            {
+                result.is_error = true;
+                result.message = "ERR internal error " + boost::lexical_cast<std::string>(rrdb_response.error);
+                reply_message(entry, result);
+                return;
+            }
+
+            result.is_error = false;
+            result.message = "OK";
+            reply_message(entry, result);
+        };
+
+        dsn::apps::update_request req;
+        dsn::blob null_blob;
+
+        dsn::apps::rrdb_generate_key(req.key, redis_req.buffers[1].data, null_blob);
+        req.value = redis_req.buffers[3].data;
+        req.expire_ts = (current_unix_seconds() + ttl_seconds);
+        req.expire_ts *= 1000;
+        auto hash = dsn::apps::rrdb_key_hash(req.key);
+
+        //TODO: set the timeout
+        client->put(req, on_setex_reply, std::chrono::milliseconds(2000), proxy_session::hash(), hash);
     }
 }
 
