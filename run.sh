@@ -745,7 +745,7 @@ function run_start_kill_test()
     cd $ROOT
     CONFIG=config-kill-test.ini
     sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-kill-test.ini >$CONFIG
-    ln -sf ${DSN_ROOT}/bin/rrdb_kill_test/rrdb_kill_test
+    ln -s -f ${DSN_ROOT}/bin/rrdb_kill_test/rrdb_kill_test
     echo "./rrdb_kill_test $CONFIG $APP_NAME &>rrdb_kill_test.log &"
     ./rrdb_kill_test $CONFIG $APP_NAME &>rrdb_kill_test.log &
     sleep 0.2
@@ -968,7 +968,9 @@ function run_shell()
         sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-shell.ini >${CONFIG}
     fi
 
-    ${DSN_ROOT}/bin/rrdb_cluster/rrdb_cluster ${CONFIG}
+    cd ${ROOT}
+    ln -s -f ${DSN_ROOT}/bin/rrdb_cluster/rrdb_cluster
+    ./rrdb_cluster config-shell.ini
 }
 
 ####################################################################
