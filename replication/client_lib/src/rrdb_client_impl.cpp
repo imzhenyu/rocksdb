@@ -64,8 +64,8 @@ int rrdb_client_impl::set(
     update_request req;
     rrdb_generate_key(req.key, hash_key, sort_key);
     req.value.assign(value.c_str(), 0, value.size());
-    auto hash = rrdb_key_hash(req.key);
-    auto pr = _client->put_sync(req, std::chrono::milliseconds(timeout_milliseconds), hash);
+    auto partition_hash = rrdb_key_hash(req.key);
+    auto pr = _client->put_sync(req, std::chrono::milliseconds(timeout_milliseconds), 0, partition_hash);
     if (info != nullptr)
     {
         if (pr.first == ERR_OK)
@@ -103,8 +103,8 @@ int rrdb_client_impl::get(
 
     dsn::blob req;
     rrdb_generate_key(req, hash_key, sort_key);
-    auto hash = rrdb_key_hash(req);
-    auto pr = _client->get_sync(req, std::chrono::milliseconds(timeout_milliseconds), hash);
+    auto partition_hash = rrdb_key_hash(req);
+    auto pr = _client->get_sync(req, std::chrono::milliseconds(timeout_milliseconds), 0, partition_hash);
     if(pr.first == ERR_OK && pr.second.error == 0)
     {
         value.assign(pr.second.value.data(), pr.second.value.length());
@@ -144,8 +144,8 @@ int rrdb_client_impl::del(
 
     dsn::blob req;
     rrdb_generate_key(req, hash_key, sort_key);
-    auto hash = rrdb_key_hash(req);
-    auto pr = _client->remove_sync(req, std::chrono::milliseconds(timeout_milliseconds), hash);
+    auto partition_hash = rrdb_key_hash(req);
+    auto pr = _client->remove_sync(req, std::chrono::milliseconds(timeout_milliseconds), 0, partition_hash);
     if (info != nullptr)
     {
         if (pr.first == ERR_OK)

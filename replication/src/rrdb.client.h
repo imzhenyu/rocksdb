@@ -17,7 +17,8 @@ public:
     std::pair< ::dsn::error_code, update_response> put_sync(
         const update_request& args,
         std::chrono::milliseconds timeout = std::chrono::milliseconds(0), 
-        uint64_t hash = 0,
+        int thread_hash = 0,
+        uint64_t partition_hash = 0,
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
@@ -28,9 +29,9 @@ public:
                 args,
                 nullptr,
                 empty_callback,
-                hash,
                 timeout,
-                0
+                thread_hash,
+                partition_hash
                 )
             );
     }
@@ -41,8 +42,9 @@ public:
         const update_request& args,
         TCallback&& callback,
         std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
-        int reply_hash = 0,
-        uint64_t hash = 0,
+        int thread_hash = 0,
+        uint64_t partition_hash = 0,
+        int reply_thread_hash = 0,
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
@@ -52,9 +54,10 @@ public:
                     args,
                     this,
                     std::forward<TCallback>(callback),
-                    hash, 
-                    timeout, 
-                    reply_hash
+                    timeout,
+                    thread_hash,
+                    partition_hash,
+                    reply_thread_hash
                     );
     }
 
@@ -63,7 +66,8 @@ public:
     std::pair< ::dsn::error_code, update_response> remove_sync(
         const ::dsn::blob& args,
         std::chrono::milliseconds timeout = std::chrono::milliseconds(0), 
-        uint64_t hash = 0,
+        int thread_hash = 0,
+        uint64_t partition_hash = 0,
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
@@ -74,9 +78,9 @@ public:
                 args,
                 nullptr,
                 empty_callback,
-                hash,
                 timeout,
-                0
+                thread_hash,
+                partition_hash
                 )
             );
     }
@@ -87,8 +91,9 @@ public:
         const ::dsn::blob& args,
         TCallback&& callback,
         std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
-        int reply_hash = 0,
-        uint64_t hash = 0,
+        int thread_hash = 0,
+        uint64_t partition_hash = 0,
+        int reply_thread_hash = 0,
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
@@ -98,9 +103,10 @@ public:
                     args,
                     this,
                     std::forward<TCallback>(callback),
-                    hash, 
-                    timeout, 
-                    reply_hash
+                    timeout,
+                    thread_hash,
+                    partition_hash,
+                    reply_thread_hash
                     );
     }
 
@@ -108,8 +114,9 @@ public:
     // - synchronous 
     std::pair< ::dsn::error_code, read_response> get_sync(
         const ::dsn::blob& args,
-        std::chrono::milliseconds timeout = std::chrono::milliseconds(0), 
-        uint64_t hash = 0,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
+        int thread_hash = 0,
+        uint64_t partition_hash = 0,
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
@@ -120,9 +127,9 @@ public:
                 args,
                 nullptr,
                 empty_callback,
-                hash,
                 timeout,
-                0
+                thread_hash,
+                partition_hash
                 )
             );
     }
@@ -133,8 +140,9 @@ public:
         const ::dsn::blob& args,
         TCallback&& callback,
         std::chrono::milliseconds timeout = std::chrono::milliseconds(0),
-        int reply_hash = 0,
-        uint64_t hash = 0,
+        int thread_hash = 0,
+        uint64_t partition_hash = 0,
+        int reply_thread_hash = 0,
         dsn::optional< ::dsn::rpc_address> server_addr = dsn::none
         )
     {
@@ -144,9 +152,10 @@ public:
                     args,
                     this,
                     std::forward<TCallback>(callback),
-                    hash, 
-                    timeout, 
-                    reply_hash
+                    timeout,
+                    thread_hash,
+                    partition_hash,
+                    reply_thread_hash
                     );
     }
 
