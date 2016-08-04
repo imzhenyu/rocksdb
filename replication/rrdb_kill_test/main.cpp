@@ -9,6 +9,7 @@
 #include <chrono>
 #include <thread>
 #include <atomic>
+#include <vector>
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -18,7 +19,9 @@
 using namespace ::dsn::apps;
 
 irrdb_client* client = nullptr;
-std::atomic_llong set_next(0);
+int total_threads;
+//should be enough for threads, coz atomics are not allowed to copy or move, we init the vector statically.
+std::vector< std::atomic_llong > set_nexts(1000);
 
 const char* set_next_key = "set_next";
 const char* hash_key_prefix = "kill_test_hash_key_";
@@ -38,18 +41,17 @@ long get_time()
     return tv.tv_sec * 1000000 + tv.tv_usec;    
 }    
 
-void do_set()
+void do_set(int thread_index)
 {
     char buf[1024];
     long last_time = get_time();
     int try_count = 0;
-    long long id = 0;
+    long long id = set_nexts[thread_index].load(std::memory_order_relaxed);
     std::string hash_key;
     std::string sort_key;
     std::string value;
     while (true) {
         if (try_count == 0) {
-            id = set_next.load();
             sprintf(buf, "%s%lld", hash_key_prefix, id);
             hash_key.assign(buf);
             sprintf(buf, "%s%lld", sort_key_prefix, id);
@@ -61,15 +63,16 @@ void do_set()
         int ret = client->set(hash_key, sort_key, value, 5000, 0, &info);
         if (ret == RRDB_ERR_OK) {
             long cur_time = get_time();
-            ddebug("kill_test: SetThread: set succeed: id=%lld, try=%d, time=%ld (gpid=%d.%d, decree=%lld, server=%s)",
-                    id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.decree, info.server.c_str());
+            ddebug("kill_test: SetThread@%d: set succeed: id=%lld, try=%d, time=%ld (gpid=%d.%d, decree=%lld, server=%s)",
+                    thread_index, id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.decree, info.server.c_str());
             last_time = cur_time;
             try_count = 0;
-            set_next++;
+            id += total_threads;
+            set_nexts[thread_index].store(id, std::memory_order_release);
         }
         else {
-            derror("kill_test: SetThread: set failed: id=%lld, try=%d, ret=%d, error=%s (gpid=%d.%d, decree=%lld, server=%s)",
-                    id, try_count, ret, client->get_error_string(ret), info.app_id, info.partition_index, info.decree, info.server.c_str());
+            derror("kill_test: SetThread@%d: set failed: id=%lld, try=%d, ret=%d, error=%s (gpid=%d.%d, decree=%lld, server=%s)",
+                    thread_index, id, try_count, ret, client->get_error_string(ret), info.app_id, info.partition_index, info.decree, info.server.c_str());
             try_count++;
             if (try_count > 3) {
                 sleep(1);
@@ -78,78 +81,18 @@ void do_set()
     }
 }
 
-/*
-// for each round:
-// - loop from range [0, set_next)
-void do_get()
+
+long long thread_set_next(int thread_index)
 {
-    char buf[1024];
-    long last_time = get_time();
-    int try_count = 0;
-    long long id = 0;
-    std::string hash_key;
-    std::string sort_key;
-    std::string value;
-    while (true) {
-        if (try_count == 0) {
-            long long next = set_next.load();
-            if (id >= next) {
-                if (next > 0) {
-                    ddebug("kill_test: GetThread: finish get round: set_next=%lld", next);
-                }
-                id = 0;
-                sleep(1);
-                continue;
-            }
-            if (id == 0) {
-                ddebug("kill_test: GetThread: start get round");
-            }
-            sprintf(buf, "%s%lld", hash_key_prefix, id);
-            hash_key.assign(buf);
-            sprintf(buf, "%s%lld", sort_key_prefix, id);
-            sort_key.assign(buf);
-            sprintf(buf, "%s%lld", value_prefix, id);
-            value.assign(buf);
-        }
-        irrdb_client::internal_info info;
-        std::string get_value;
-        int ret = client->get(hash_key, sort_key, get_value, 5000, &info);
-        if (ret == RRDB_ERR_OK || ret == RRDB_ERR_NOT_FOUND) {
-            long cur_time = get_time();
-            if (ret == RRDB_ERR_NOT_FOUND) {
-                derror("kill_test: GetThread: get not found: id=%lld, try=%d, time=%ld (gpid=%d.%d, ballot=%lld, server=%s)",
-                    id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.ballot, info.server.c_str());
-            }
-            else if (value == get_value) {
-                dinfo("kill_test: GetThread: get succeed: id=%lld, try=%d, time=%ld (gpid=%d.%d, ballot=%lld, server=%s)",
-                    id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.ballot, info.server.c_str());
-            }
-            else {
-                derror("kill_test: GetThread: get mismatched: id=%lld, try=%d, time=%ld, expect_value=%s, real_value=%s (gpid=%d.%d, ballot=%lld, server=%s)",
-                    id, try_count, (cur_time - last_time), value.c_str(), get_value.c_str(), info.app_id, info.partition_index, info.ballot, info.server.c_str());
-            }
-            last_time = cur_time;
-            try_count = 0;
-            id++;
-        }
-        else {
-            derror("kill_test: GetThread: get failed: id=%lld, try=%d, ret=%d, error=%s (gpid=%d.%d, ballot=%lld, server=%s)",
-                id, try_count, ret, client->get_error_string(ret), info.app_id, info.partition_index, info.ballot, info.server.c_str());
-            try_count++;
-            if (try_count > 3) {
-                sleep(1);
-            }
-        }
-    }
+    return set_nexts[thread_index].load(std::memory_order_acquire)/total_threads;
 }
-*/
 
 // for each round:
-// - first randomly get from range [0, set_next - ROUND_COUNT) for RANDOM_COUNT times
-// - then loop from range [set_next - ROUND_COUNT, set_next)
+// - first randomly get from range [0, thread_set_next - ROUND_COUNT) for RANDOM_COUNT times
+// - then loop from range [thread_set_next - ROUND_COUNT, thread_set_next)
 #define ROUND_COUNT 100000
 #define RANDOM_COUNT 100000
-void do_get()
+void do_get(int thread_index)
 {
     char buf[1024];
     long last_time = get_time();
@@ -161,7 +104,7 @@ void do_get()
     std::string hash_key;
     std::string sort_key;
     std::string value;
-    std::srand(std::time(0));
+
     while (true) {
         if (try_count == 0) {
             if (random_count < RANDOM_COUNT) {
@@ -173,17 +116,17 @@ void do_get()
                     id = random_end;
                 }
             }
-            else if (id < next - 1) {
+            else if (id < next-1) {
                 id++;
             }
             else {
-                next = set_next.load();
-                if (id < next - 1) {
+                next = thread_set_next(thread_index);
+                if (id < next-1) {
                     id++;
                 }
                 else {
                     if (next > 0 && id != LLONG_MAX) {
-                        ddebug("kill_test: GetThread: finish get round: set_next=%lld", next);
+                        ddebug("kill_test: GetThread@%d: finish get round: set_next=%lld", thread_index, next);
                     }
 
                     sleep(1);
@@ -192,7 +135,7 @@ void do_get()
                         continue;
                     }
 
-                    next = set_next.load();
+                    next = thread_set_next(thread_index);
                     if (next >= ROUND_COUNT + RANDOM_COUNT * 2) {
                         random_count = 0;
                         random_end = next - ROUND_COUNT;
@@ -204,15 +147,17 @@ void do_get()
                         id = 0;
                     }
                     if (next > 0) {
-                        ddebug("kill_test: GetThread: start get round: set_next=%lld, random_end=%lld", next, random_end);
+                        ddebug("kill_test: GetThread@%d: start get round: set_next=%lld, random_end=%lld", thread_index, next, random_end);
                     }
                 }
             }
-            sprintf(buf, "%s%lld", hash_key_prefix, id);
+
+            long long real_id = id*total_threads + thread_index;
+            sprintf(buf, "%s%lld", hash_key_prefix, real_id);
             hash_key.assign(buf);
-            sprintf(buf, "%s%lld", sort_key_prefix, id);
+            sprintf(buf, "%s%lld", sort_key_prefix, real_id);
             sort_key.assign(buf);
-            sprintf(buf, "%s%lld", value_prefix, id);
+            sprintf(buf, "%s%lld", value_prefix, real_id);
             value.assign(buf);
         }
         std::string get_value;
@@ -221,31 +166,42 @@ void do_get()
         if (ret == RRDB_ERR_OK || ret == RRDB_ERR_NOT_FOUND) {
             long cur_time = get_time();
             if (ret == RRDB_ERR_NOT_FOUND) {
-                dfatal("kill_test: GetThread: get not found: id=%lld, try=%d, time=%ld (gpid=%d.%d, server=%s)",
-                    id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.server.c_str());
+                dfatal("kill_test: GetThread%d: get not found: id=%lld, try=%d, time=%ld (gpid=%d.%d, server=%s)",
+                    thread_index, id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.server.c_str());
                 exit(-1);
             }
             else if (value == get_value) {
-                dinfo("kill_test: GetThread: get succeed: id=%lld, try=%d, time=%ld (gpid=%d.%d, server=%s)",
-                    id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.server.c_str());
+                dinfo("kill_test: GetThread%d: get succeed: id=%lld, try=%d, time=%ld (gpid=%d.%d, server=%s)",
+                    thread_index, id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.server.c_str());
             }
             else {
-                dfatal("kill_test: GetThread: get mismatched: id=%lld, try=%d, time=%ld, expect_value=%s, real_value=%s (gpid=%d.%d, server=%s)",
-                    id, try_count, (cur_time - last_time), value.c_str(), get_value.c_str(), info.app_id, info.partition_index, info.server.c_str());
+                dfatal("kill_test: GetThread%d: get mismatched: id=%lld, try=%d, time=%ld, expect_value=%s, real_value=%s (gpid=%d.%d, server=%s)",
+                    thread_index, id, try_count, (cur_time - last_time), value.c_str(), get_value.c_str(), info.app_id, info.partition_index, info.server.c_str());
                 exit(-1);
             }
             last_time = cur_time;
             try_count = 0;
         }
         else {
-            derror("kill_test: GetThread: get failed: id=%lld, try=%d, ret=%d, error=%s (gpid=%d.%d, server=%s)",
-                id, try_count, ret, client->get_error_string(ret), info.app_id, info.partition_index, info.server.c_str());
+            derror("kill_test: GetThread%d: get failed: id=%lld, try=%d, ret=%d, error=%s (gpid=%d.%d, server=%s)",
+                thread_index, id, try_count, ret, client->get_error_string(ret), info.app_id, info.partition_index, info.server.c_str());
             try_count++;
             if (try_count > 3) {
                 sleep(1);
             }
         }
     }
+}
+
+long long get_min_set_next()
+{
+    long long result = set_nexts[0].load(std::memory_order_acquire);
+    for (unsigned int i=0; i<total_threads; ++i) {
+        long long next_value = set_nexts[i].load(std::memory_order_acquire);
+        if (result > next_value)
+            result = next_value;
+    }
+    return result;
 }
 
 void do_mark()
@@ -256,7 +212,7 @@ void do_mark()
     std::string value;
     while (true) {
         sleep(1);
-        long long next = set_next.load();
+        long long next = get_min_set_next();
         if (id == next) {
             continue;
         }
@@ -275,13 +231,24 @@ void do_mark()
     }
 }
 
+void initialize_set_next(long long min_db_set)
+{
+    int start = min_db_set - min_db_set%total_threads;
+    for (int i=0; i<total_threads; ++i)
+        set_nexts[i].store(start+i);
+}
+
 int main(int argc, const char* argv[])
 {
-    if (argc != 3) {
-        derror("USAGE: %s <config-file> <app-name>", argv[0]);
+    if (argc != 4) {
+        derror("USAGE: %s <config-file> <app-name> <rw-thread-count>", argv[0]);
         return -1;
     }
-
+    total_threads = atoi(argv[3]);
+    if (total_threads <= 0 ) {
+        derror("USAGE: %s <config-file> <app-name> <rw-thread-count>", argv[0]);
+        return -1;
+    }
     const char* config_file = argv[1];
     if (!rrdb_client_factory::initialize(config_file)) {
         derror("kill_test: MainThread: init pegasus failed");
@@ -303,12 +270,12 @@ int main(int argc, const char* argv[])
                 return -1;
             }
             ddebug("kill_test: MainThread: read \"%s\" succeed: value=%lld", set_next_key, i);
-            set_next.store(i);
+            initialize_set_next(i);
             break;
         }
         else if (ret == RRDB_ERR_NOT_FOUND) {
             ddebug("kill_test: MainThread: read \"%s\" not found, init set_next to 0", set_next_key);
-            set_next.store(0);
+            initialize_set_next(0);
             break;
         }
         else {
@@ -316,14 +283,19 @@ int main(int argc, const char* argv[])
         }
     }
 
-    std::thread set_thread(do_set);
-    std::thread get_thread(do_get);
-    std::thread mark_thread(do_mark);
+    std::srand(std::time(0));
 
-    set_thread.join();
-    get_thread.join();
-    mark_thread.join();
+    ddebug("kill_test: MainThread: start %d worker threads for both read/write", total_threads);
+    std::vector<std::thread> worker_threads;
 
+    for (int i=0; i<total_threads; ++i) {
+        worker_threads.push_back( std::thread(do_set, i) );
+        worker_threads.push_back( std::thread(do_get, i) );
+    }
+    worker_threads.push_back( std::thread(do_mark) );
+
+    for (unsigned int i=0; i<worker_threads.size(); ++i)
+        worker_threads[i].join();
     return 0;
 }
 
