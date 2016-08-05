@@ -683,7 +683,7 @@ function usage_start_kill_test()
     echo "   -t|--kill_type <str>"
     echo "                     kill type: meta | replica | all, default is all"
     echo "   -s|--sleep_time <num>"
-    echo "                     max sleep time before next kill, default is 300"
+    echo "                     max sleep time before next kill, default is 10"
     echo "                     actual sleep time will be a random value in range of [1, sleep_time]"
     echo "   -t|--thread_count <num>"
     echo "                     thread count for concurrently setting value, default is 10"
@@ -696,7 +696,7 @@ function run_start_kill_test()
     APP_NAME=rrdb.instance0
     PARTITION_COUNT=16
     KILL_TYPE=all
-    SLEEP_TIME=300
+    SLEEP_TIME=10
     THREAD_COUNT=10
     while [[ $# > 0 ]]; do
         key="$1"
