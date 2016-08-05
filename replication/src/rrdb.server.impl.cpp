@@ -1,4 +1,5 @@
 # include "rrdb.server.impl.h"
+# include "key_utils.h"
 # include <algorithm>
 # include <dsn/utility/utils.h>
 # include <rocksdb/utilities/checkpoint.h>
@@ -207,7 +208,7 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
     if (count == 0)
     {
         // write fake data
-        // TODO(qinzuoyan): maybe no need to write fake date, just write empty batch
+        // TODO(qinzuoyan): maybe no need to write fake data, just write empty batch
         _batch.Put(rocksdb::Slice(), rocksdb::Slice());
         _batch_repliers.emplace_back(nullptr);
     }
@@ -222,6 +223,14 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
             {
                 update_request update;
                 ::dsn::unmarshall(request, update);
+                if (msg->header->client.partition_hash != 0)
+                {
+                    uint64_t partition_hash = rrdb_key_hash(update.key);
+                    dassert(msg->header->client.partition_hash == partition_hash, "inconsistent partition hash");
+                    int thread_hash = dsn_gpid_to_thread_hash(_gpid);
+                    dassert(msg->header->client.thread_hash == thread_hash, "inconsistent thread hash");
+                }
+
                 rocksdb::Slice skey(update.key.data(), update.key.length());
                 rocksdb::Slice svalue(update.value.data(), update.value.length());
                 _batch.Put(skey, svalue);
@@ -231,6 +240,14 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
             {
                 ::dsn::blob key;
                 ::dsn::unmarshall(request, key);
+                if (msg->header->client.partition_hash != 0)
+                {
+                    uint64_t partition_hash = rrdb_key_hash(key);
+                    dassert(msg->header->client.partition_hash == partition_hash, "inconsistent partition hash");
+                    int thread_hash = dsn_gpid_to_thread_hash(_gpid);
+                    dassert(msg->header->client.thread_hash == thread_hash, "inconsistent thread hash");
+                }
+
                 rocksdb::Slice skey(key.data(), key.length());
                 _batch.Delete(skey);
                 _batch_repliers.emplace_back(dsn_msg_create_response(request));
