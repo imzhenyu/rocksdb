@@ -19,6 +19,14 @@ set(MY_PROJ_LIBS
     readline
     )
 
+if (UNIX)
+    set(MY_PROJ_LIBS rocksdb ${MY_PROJ_LIBS} z bz2 snappy rt aio pthread)
+else()
+    set(MY_PROJ_LIBS rocksdblib ${MY_PROJ_LIBS} rpcrt4)
+endif()
+
+set(MY_PROJ_LIB_PATH "../..")
+
 file(GLOB
     RES_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.ini"

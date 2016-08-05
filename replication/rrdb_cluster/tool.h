@@ -6,9 +6,11 @@
 #include <rrdb_client.h>
 #include <dsn/dist/replication/replication_ddl_client.h>
 #include "rrdb_client_impl.h"
+#include "key_utils.h"
 #include <iomanip>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <rocksdb/db.h>
 
 using namespace ::dsn::apps;
 
@@ -26,6 +28,7 @@ static const char* HASH_OP = "hash";
 static const char* SET_OP = "set";
 static const char* GET_OP = "get";
 static const char* DEL_OP = "del";
+static const char* LOCAL_GET_OP = "local_get";
 static const char* EXIT_OP = "exit";
 static const char* HELP_OP = "help";
 
@@ -56,6 +59,7 @@ void printHelpInfo()
     std::cout << "\t" << "set:             set <hash_key> <sort_key> <value>" << std::endl;
     std::cout << "\t" << "get:             get <hash_key> <sort_key>" << std::endl;
     std::cout << "\t" << "del:             del <hash_key> <sort_key>" << std::endl;
+    std::cout << "\t" << "local_get:       local_get <db_path> <hash_key> <sort_key>" << std::endl;
     std::cout << "\t" << "exit:            exit" << std::endl;
     std::cout << "\t" << "help:            help" << std::endl;
     std::cout << std::endl;
@@ -506,4 +510,40 @@ void del_op(int Argc, std::string Argv[], irrdb_client* client)
     fprintf(stderr, "partition_index : %d\n", info.partition_index);
     fprintf(stderr, "decree          : %ld\n", info.decree);
     fprintf(stderr, "server          : %s\n", info.server.c_str());
+}
+
+void local_get_op(int Argc, std::string Argv[])
+{
+    if ( Argc != 4 )
+    {
+        std::cout << "USAGE: local_get <db_path> <hash_key> <sort_key>" << std::endl;
+        return;
+    }
+
+    std::string db_path = Argv[1];
+    std::string hash_key = Argv[2];
+    std::string sort_key = Argv[3];
+
+    rocksdb::Options db_opts;
+    rocksdb::DB* db;
+    rocksdb::Status status = rocksdb::DB::OpenForReadOnly(db_opts, db_path, &db);
+    if (!status.ok()) {
+        fprintf(stderr, "ERROR: open db failed: %s\n", status.ToString().c_str());
+        return;
+    }
+
+    dsn::blob key;
+    rrdb_generate_key(key, hash_key, sort_key);
+    rocksdb::Slice skey(key.data(), key.length());
+    std::string value;
+    rocksdb::ReadOptions rd_opts;
+    status = db->Get(rd_opts, skey, &value);
+    if (!status.ok()) {
+        fprintf(stderr, "ERROR: get failed: %s\n", status.ToString().c_str());
+    }
+    else {
+        fprintf(stderr, "%s\n", value.c_str());
+    }
+
+    delete db;
 }
