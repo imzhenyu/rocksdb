@@ -39,6 +39,12 @@ rrdb_service_impl::rrdb_service_impl(dsn_gpid gpid)
     _replica_name = buf;
     _data_dir = dsn_get_app_data_dir(gpid);
 
+    _log_on_not_found = dsn_config_get_value_bool("replication",
+              "rocksdb_log_on_not_found",
+              false,
+              "print error log if data not found, default is false"
+              );
+
     // init db options
 
     // rocksdb default: 4MB
@@ -309,7 +315,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_r
     rocksdb::Slice skey(key.data(), key.length());
     std::string* value = new std::string();
     rocksdb::Status status = _db->Get(_rd_opts, skey, value);
-    if (!status.ok() && !status.IsNotFound())
+    if (!status.ok() && (!status.IsNotFound() || _log_on_not_found))
     {
         derror("%s: read rocksdb failed, error = %s",
                _replica_name.c_str(), status.ToString().c_str());
