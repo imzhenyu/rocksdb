@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <dsn/utility/ports.h>
+#include <dsn/utility/utils.h>
 
 namespace dsn{ namespace apps{
 
@@ -26,6 +27,33 @@ void rrdb_generate_key(::dsn::blob& key, const T& hash_key, const T& sort_key)
     }
 
     key.assign(buf, 0, len);
+}
+
+inline void rrdb_restore_key(const ::dsn::blob& key, ::dsn::blob& hash_key, ::dsn::blob& sort_key)
+{
+    dassert(key.length() >= 2, "key length must be no less than 2");
+
+    // hash_key_len is in big endian
+    uint16_t hash_key_len = be16toh(*(int16_t*)(key.data()));
+
+    if (hash_key_len > 0)
+    {
+        dassert(key.length() >= 2 + hash_key_len, "key length must be greater than (2 + hash_key_len)");
+        hash_key = key.range(2, hash_key_len);
+    }
+    else
+    {
+        hash_key = ::dsn::blob();
+    }
+
+    if (key.length() > 2 + hash_key_len)
+    {
+        sort_key = key.range(2 + hash_key_len);
+    }
+    else
+    {
+        sort_key = ::dsn::blob();
+    }
 }
 
 inline uint64_t rrdb_key_hash(const ::dsn::blob& key)
