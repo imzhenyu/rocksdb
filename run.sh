@@ -685,8 +685,8 @@ function usage_start_kill_test()
     echo "   -s|--sleep_time <num>"
     echo "                     max sleep time before next kill, default is 10"
     echo "                     actual sleep time will be a random value in range of [1, sleep_time]"
-    echo "   -t|--thread_count <num>"
-    echo "                     thread count for concurrently setting value, default is 10"
+    echo "   -w|--worker_count <num>"
+    echo "                     worker count for concurrently setting value, default is 10"
 }
 
 function run_start_kill_test()
@@ -729,7 +729,7 @@ function run_start_kill_test()
                 SLEEP_TIME="$2"
                 shift
                 ;;
-            -t|--thread_count)
+            -w|--worker_count)
                 THREAD_COUNT="$2"
                 shift
                 ;;
