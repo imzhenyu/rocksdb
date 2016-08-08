@@ -683,8 +683,10 @@ function usage_start_kill_test()
     echo "   -t|--kill_type <str>"
     echo "                     kill type: meta | replica | all, default is all"
     echo "   -s|--sleep_time <num>"
-    echo "                     max sleep time before next kill, default is 300"
+    echo "                     max sleep time before next kill, default is 10"
     echo "                     actual sleep time will be a random value in range of [1, sleep_time]"
+    echo "   -w|--worker_count <num>"
+    echo "                     worker count for concurrently setting value, default is 10"
 }
 
 function run_start_kill_test()
@@ -694,7 +696,8 @@ function run_start_kill_test()
     APP_NAME=rrdb.instance0
     PARTITION_COUNT=16
     KILL_TYPE=all
-    SLEEP_TIME=300
+    SLEEP_TIME=10
+    THREAD_COUNT=10
     while [[ $# > 0 ]]; do
         key="$1"
         case $key in
@@ -726,6 +729,10 @@ function run_start_kill_test()
                 SLEEP_TIME="$2"
                 shift
                 ;;
+            -w|--worker_count)
+                THREAD_COUNT="$2"
+                shift
+                ;;
             *)
                 echo "ERROR: unknown option \"$key\""
                 echo
@@ -746,8 +753,8 @@ function run_start_kill_test()
     CONFIG=config-kill-test.ini
     sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-kill-test.ini >$CONFIG
     ln -s -f ${DSN_ROOT}/bin/rrdb_kill_test/rrdb_kill_test
-    echo "./rrdb_kill_test $CONFIG $APP_NAME &>rrdb_kill_test.log &"
-    ./rrdb_kill_test $CONFIG $APP_NAME &>rrdb_kill_test.log &
+    echo "./rrdb_kill_test $CONFIG $APP_NAME $THREAD_COUNT &>rrdb_kill_test.log &"
+    ./rrdb_kill_test $CONFIG $APP_NAME $THREAD_COUNT &>rrdb_kill_test.log &
     sleep 0.2
     echo
 

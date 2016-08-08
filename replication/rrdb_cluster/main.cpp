@@ -226,6 +226,8 @@ int main(int argc, const char* argv[])
             if (client_of_rrdb != NULL)
                 del_op(Argc, Argv, client_of_rrdb);
         }
+        else if ( op_name == LOCAL_GET_OP )
+            local_get_op(Argc, Argv);
         else if ( op_name == EXIT_OP )
             return 0;
         else

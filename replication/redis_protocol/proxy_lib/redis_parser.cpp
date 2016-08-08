@@ -385,9 +385,9 @@ void redis_parser::set(redis_parser::message_entry& entry)
         dsn::blob null_blob;
         dsn::apps::rrdb_generate_key(req.key, request.buffers[1].data, null_blob);
         req.value = request.buffers[2].data;
-        auto hash = dsn::apps::rrdb_key_hash(req.key);
+        auto partition_hash = dsn::apps::rrdb_key_hash(req.key);
         //TODO: set the timeout
-        client->put(req, on_set_reply, std::chrono::milliseconds(2000), proxy_session::hash(), hash);
+        client->put(req, on_set_reply, std::chrono::milliseconds(2000), 0, partition_hash, proxy_session::hash());
     }
 }
 
@@ -446,9 +446,9 @@ void redis_parser::get(message_entry &entry)
         dsn::blob req;
         dsn::blob null_blob;
         dsn::apps::rrdb_generate_key(req, redis_req.buffers[1].data, null_blob);
-        auto hash = dsn::apps::rrdb_key_hash(req);
+        auto partition_hash = dsn::apps::rrdb_key_hash(req);
         //TODO: set the timeout
-        client->get(req, on_get_reply, std::chrono::milliseconds(2000), proxy_session::hash(), hash);
+        client->get(req, on_get_reply, std::chrono::milliseconds(2000), 0, partition_hash, proxy_session::hash());
     }
 }
 
@@ -499,9 +499,9 @@ void redis_parser::del(message_entry &entry)
         dsn::blob req;
         dsn::blob null_blob;
         dsn::apps::rrdb_generate_key(req, redis_req.buffers[1].data, null_blob);
-        auto hash = dsn::apps::rrdb_key_hash(req);
+        auto partition_hash = dsn::apps::rrdb_key_hash(req);
         //TODO: set the timeout
-        client->remove(req, on_del_reply, std::chrono::milliseconds(2000), proxy_session::hash(), hash);
+        client->remove(req, on_del_reply, std::chrono::milliseconds(2000), 0, partition_hash, proxy_session::hash());
     }
 }
 

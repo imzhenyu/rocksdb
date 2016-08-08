@@ -13,11 +13,21 @@ set(MY_SRC_SEARCH_MODE "GLOB")
 set(MY_PROJ_INC_PATH "../../include" "../client_lib/include" "../client_lib/src" "../src")
 
 set(MY_PROJ_LIBS 
-    dsn.replication.clientlib
-    dsn.replication.ddlclient
+    dsn.dist.service.common
+    dsn.dist.service.meta_server_lib
+    dsn.dist.service.replication_lib
+    dsn.dist.service.ddlclient_lib
     rrdb.clientlib
     readline
     )
+
+if (UNIX)
+    set(MY_PROJ_LIBS rocksdb ${MY_PROJ_LIBS} z bz2 snappy rt aio pthread)
+else()
+    set(MY_PROJ_LIBS rocksdblib ${MY_PROJ_LIBS} rpcrt4)
+endif()
+
+set(MY_PROJ_LIB_PATH "../..")
 
 file(GLOB
     RES_FILES

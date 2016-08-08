@@ -22,12 +22,12 @@ private:
     dsn::task_ptr request_meta(
             dsn_task_code_t code,
             std::shared_ptr<TRequest>& req,
-            int timeout_milliseconds= 0,
-            int reply_hash = 0
+            int timeout_milliseconds = 0,
+            int reply_thread_hash = 0
             )
     {
-        dsn_message_t msg = dsn_msg_create_request(code, timeout_milliseconds, 0);
-        dsn::task_ptr task = ::dsn::rpc::create_rpc_response_task(msg, nullptr, [](dsn::error_code, dsn_message_t, dsn_message_t) {}, reply_hash);
+        dsn_message_t msg = dsn_msg_create_request(code, timeout_milliseconds);
+        dsn::task_ptr task = ::dsn::rpc::create_rpc_response_task(msg, nullptr, [](dsn::error_code, dsn_message_t, dsn_message_t) {}, reply_thread_hash);
         ::marshall(msg, *req);
         dsn::rpc::call(
             _meta_servers,
@@ -36,8 +36,7 @@ private:
             [this, task] (dsn::error_code err, dsn_message_t request, dsn_message_t response)
             {
                 end_meta_request(std::move(task), 0, err, request, response);
-            },
-            0
+            }
          );
         return task;
     }

@@ -1,4 +1,5 @@
 # include "rrdb.server.impl.h"
+# include "key_utils.h"
 # include <algorithm>
 # include <dsn/tool-api/rpc_message.h>
 # include <rocksdb/utilities/checkpoint.h>
@@ -37,6 +38,12 @@ rrdb_service_impl::rrdb_service_impl(dsn_gpid gpid)
     sprintf(buf, "%u.%u@%s", gpid.u.app_id, gpid.u.partition_index, _primary_address.c_str());
     _replica_name = buf;
     _data_dir = dsn_get_app_data_dir(gpid);
+
+    _verbose_log = dsn_config_get_value_bool("replication",
+              "rocksdb_verbose_log",
+              false,
+              "print verbose log for debugging, default is false"
+              );
 
     // init db options
 
@@ -207,7 +214,7 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
     if (count == 0)
     {
         // write fake data
-        // TODO(qinzuoyan): maybe no need to write fake date, just write empty batch
+        // TODO(qinzuoyan): maybe no need to write fake data, just write empty batch
         _batch.Put(rocksdb::Slice(), rocksdb::Slice());
         _batch_repliers.emplace_back(nullptr);
     }
@@ -218,19 +225,22 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
             dsn_message_t request = requests[i];
             dassert(request != nullptr, "");
             ::dsn::message_ex* msg = (::dsn::message_ex*)request;
+            ::dsn::blob key;
             if (msg->local_rpc_code == RPC_RRDB_RRDB_PUT)
             {
                 update_request update;
                 ::dsn::unmarshall(request, update);
-                rocksdb::Slice skey(update.key.data(), update.key.length());
+                key = update.key;
+
+                rocksdb::Slice skey(key.data(), key.length());
                 rocksdb::Slice svalue(update.value.data(), update.value.length());
                 _batch.Put(skey, svalue);
                 _batch_repliers.emplace_back(dsn_msg_create_response(request));
             }
             else if (msg->local_rpc_code == RPC_RRDB_RRDB_REMOVE)
             {
-                ::dsn::blob key;
                 ::dsn::unmarshall(request, key);
+
                 rocksdb::Slice skey(key.data(), key.length());
                 _batch.Delete(skey);
                 _batch_repliers.emplace_back(dsn_msg_create_response(request));
@@ -239,6 +249,24 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
             {
                 dassert(false, "rpc code not handled: %s", task_code(msg->local_rpc_code).to_string());
             }
+
+            if (msg->header->client.partition_hash != 0)
+            {
+                uint64_t partition_hash = rrdb_key_hash(key);
+                dassert(msg->header->client.partition_hash == partition_hash, "inconsistent partition hash");
+                int thread_hash = dsn_gpid_to_thread_hash(_gpid);
+                dassert(msg->header->client.thread_hash == thread_hash, "inconsistent thread hash");
+            }
+
+            if (_verbose_log)
+            {
+                ::dsn::blob hash_key, sort_key;
+                rrdb_restore_key(key, hash_key, sort_key);
+                ddebug("%s: rocksdb write: decree = %" PRId64 ", code = %s, hash_key = \"%.*s\", sort_key = \"%.*s\"",
+                       _replica_name.c_str(), decree, dsn_task_code_to_string(msg->local_rpc_code),
+                       hash_key.length(), hash_key.data(),
+                       sort_key.length(), sort_key.data());
+            }
         }
     }
 
@@ -246,7 +274,7 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
     auto status = _db->Write(_wt_opts, &_batch);
     if (!status.ok())
     {
-        derror("%s: write rocksdb failed, decree = %" PRId64 ", error = %s",
+        derror("%s: rocksdb write failed: decree = %" PRId64 ", error = %s",
                _replica_name.c_str(), decree, status.ToString().c_str());
         _physical_error = status.code();
     }
@@ -292,10 +320,23 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_r
     rocksdb::Slice skey(key.data(), key.length());
     std::string* value = new std::string();
     rocksdb::Status status = _db->Get(_rd_opts, skey, value);
-    if (!status.ok() && !status.IsNotFound())
+    if (!status.ok())
     {
-        derror("%s: read rocksdb failed, error = %s",
-               _replica_name.c_str(), status.ToString().c_str());
+        if (_verbose_log)
+        {
+            ::dsn::blob hash_key, sort_key;
+            rrdb_restore_key(key, hash_key, sort_key);
+            derror("%s: rocksdb get failed: hash_key = \"%.*s\", sort_key = \"%.*s\", error = %s",
+                   _replica_name.c_str(),
+                   hash_key.length(), hash_key.data(),
+                   sort_key.length(), sort_key.data(),
+                   status.ToString().c_str());
+        }
+        else if (!status.IsNotFound())
+        {
+            derror("%s: rocksdb get failed: error = %s",
+                   _replica_name.c_str(), status.ToString().c_str());
+        }
     }
 
     resp.error = status.code();

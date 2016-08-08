@@ -18,9 +18,7 @@ set(MY_SRC_SEARCH_MODE "GLOB")
 
 set(MY_PROJ_INC_PATH "../include" "../../src")
 
-set(MY_PROJ_LIBS dsn.replication
-		 dsn.replication.clientlib
-   )
+set(MY_PROJ_LIBS "")
 
 set(MY_PROJ_LIB_PATH "")
 

@@ -104,6 +104,7 @@ namespace dsn {
             std::string                  _primary_address;
             std::string                  _replica_name;
             std::string                  _data_dir;
+            bool                         _verbose_log;
 
             rocksdb::Options             _db_opts;
             rocksdb::WriteOptions        _wt_opts;
