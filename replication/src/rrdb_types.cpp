@@ -105,10 +105,21 @@ update_request::update_request(const update_request& other0) {
   value = other0.value;
   __isset = other0.__isset;
 }
-update_request& update_request::operator=(const update_request& other1) {
-  key = other1.key;
-  value = other1.value;
-  __isset = other1.__isset;
+update_request::update_request( update_request&& other1) {
+  key = std::move(other1.key);
+  value = std::move(other1.value);
+  __isset = std::move(other1.__isset);
+}
+update_request& update_request::operator=(const update_request& other2) {
+  key = other2.key;
+  value = other2.value;
+  __isset = other2.__isset;
+  return *this;
+}
+update_request& update_request::operator=(update_request&& other3) {
+  key = std::move(other3.key);
+  value = std::move(other3.value);
+  __isset = std::move(other3.__isset);
   return *this;
 }
 void update_request::printTo(std::ostream& out) const {
@@ -257,21 +268,38 @@ void swap(update_response &a, update_response &b) {
   swap(a.__isset, b.__isset);
 }
 
-update_response::update_response(const update_response& other2) {
-  error = other2.error;
-  app_id = other2.app_id;
-  partition_index = other2.partition_index;
-  decree = other2.decree;
-  server = other2.server;
-  __isset = other2.__isset;
+update_response::update_response(const update_response& other4) {
+  error = other4.error;
+  app_id = other4.app_id;
+  partition_index = other4.partition_index;
+  decree = other4.decree;
+  server = other4.server;
+  __isset = other4.__isset;
 }
-update_response& update_response::operator=(const update_response& other3) {
-  error = other3.error;
-  app_id = other3.app_id;
-  partition_index = other3.partition_index;
-  decree = other3.decree;
-  server = other3.server;
-  __isset = other3.__isset;
+update_response::update_response( update_response&& other5) {
+  error = std::move(other5.error);
+  app_id = std::move(other5.app_id);
+  partition_index = std::move(other5.partition_index);
+  decree = std::move(other5.decree);
+  server = std::move(other5.server);
+  __isset = std::move(other5.__isset);
+}
+update_response& update_response::operator=(const update_response& other6) {
+  error = other6.error;
+  app_id = other6.app_id;
+  partition_index = other6.partition_index;
+  decree = other6.decree;
+  server = other6.server;
+  __isset = other6.__isset;
+  return *this;
+}
+update_response& update_response::operator=(update_response&& other7) {
+  error = std::move(other7.error);
+  app_id = std::move(other7.app_id);
+  partition_index = std::move(other7.partition_index);
+  decree = std::move(other7.decree);
+  server = std::move(other7.server);
+  __isset = std::move(other7.__isset);
   return *this;
 }
 void update_response::printTo(std::ostream& out) const {
@@ -423,21 +451,38 @@ void swap(read_response &a, read_response &b) {
   swap(a.__isset, b.__isset);
 }
 
-read_response::read_response(const read_response& other4) {
-  error = other4.error;
-  value = other4.value;
-  app_id = other4.app_id;
-  partition_index = other4.partition_index;
-  server = other4.server;
-  __isset = other4.__isset;
+read_response::read_response(const read_response& other8) {
+  error = other8.error;
+  value = other8.value;
+  app_id = other8.app_id;
+  partition_index = other8.partition_index;
+  server = other8.server;
+  __isset = other8.__isset;
 }
-read_response& read_response::operator=(const read_response& other5) {
-  error = other5.error;
-  value = other5.value;
-  app_id = other5.app_id;
-  partition_index = other5.partition_index;
-  server = other5.server;
-  __isset = other5.__isset;
+read_response::read_response( read_response&& other9) {
+  error = std::move(other9.error);
+  value = std::move(other9.value);
+  app_id = std::move(other9.app_id);
+  partition_index = std::move(other9.partition_index);
+  server = std::move(other9.server);
+  __isset = std::move(other9.__isset);
+}
+read_response& read_response::operator=(const read_response& other10) {
+  error = other10.error;
+  value = other10.value;
+  app_id = other10.app_id;
+  partition_index = other10.partition_index;
+  server = other10.server;
+  __isset = other10.__isset;
+  return *this;
+}
+read_response& read_response::operator=(read_response&& other11) {
+  error = std::move(other11.error);
+  value = std::move(other11.value);
+  app_id = std::move(other11.app_id);
+  partition_index = std::move(other11.partition_index);
+  server = std::move(other11.server);
+  __isset = std::move(other11.__isset);
   return *this;
 }
 void read_response::printTo(std::ostream& out) const {

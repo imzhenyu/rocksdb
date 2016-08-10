@@ -36,7 +36,9 @@ class update_request {
  public:
 
   update_request(const update_request&);
+  update_request(update_request&&);
   update_request& operator=(const update_request&);
+  update_request& operator=(update_request&&);
   update_request() {
   }
 
@@ -91,7 +93,9 @@ class update_response {
  public:
 
   update_response(const update_response&);
+  update_response(update_response&&);
   update_response& operator=(const update_response&);
+  update_response& operator=(update_response&&);
   update_response() : error(0), app_id(0), partition_index(0), decree(0), server() {
   }
 
@@ -161,7 +165,9 @@ class read_response {
  public:
 
   read_response(const read_response&);
+  read_response(read_response&&);
   read_response& operator=(const read_response&);
+  read_response& operator=(read_response&&);
   read_response() : error(0), app_id(0), partition_index(0), server() {
   }
 

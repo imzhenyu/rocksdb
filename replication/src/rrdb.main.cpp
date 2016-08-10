@@ -1,5 +1,7 @@
 // apps
 # include "rrdb.app.example.h"
+# include "rrdb.server.impl.h"
+# include <dsn/cpp/replicated_service_app.h>
 
 void dsn_app_registration_rrdb()
 {
