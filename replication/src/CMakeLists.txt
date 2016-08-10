@@ -25,21 +25,16 @@ set(MY_PROJ_LIB_PATH "../..")
 
 set(MY_BOOST_PACKAGES "")
 
-file(GLOB
-    RES_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.ini"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.sh"
-    "${CMAKE_CURRENT_SOURCE_DIR}/*.cmd"
-    )
-
 # Extra files that will be installed
+file(GLOB RES_FILES "${CMAKE_CURRENT_SOURCE_DIR}/config.ini")
 set(MY_BINPLACES ${RES_FILES})
 
 # Copy libdsn.core.so and set rpath, to make rrdb use dsn shared lib in local directory.
 if (UNIX)
     SET(CMAKE_INSTALL_RPATH ".")
     SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-    set(MY_BINPLACES ${MY_BINPLACES} "${DSN_ROOT}/lib/libdsn.core.so" "${DSN_ROOT}/lib/libthrift.so")
+    file(GLOB THRIFT_LIBS "${DSN_ROOT}/lib/libthrift.so*")
+    set(MY_BINPLACES ${MY_BINPLACES} "${DSN_ROOT}/lib/libdsn.core.so" ${THRIFT_LIBS})
 endif()
 
 dsn_add_executable()
