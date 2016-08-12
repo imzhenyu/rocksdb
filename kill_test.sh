@@ -113,7 +113,7 @@ do
   echo "[`date`] stop $TYPE #$TASK_ID"
   ./run.sh stop_onebox_instance $OPT $TASK_ID
   ###
-  SECONDS=$((RANDOM % LEASE_TIMEOUT + 1))
+  SECONDS=$((RANDOM % LEASE_TIMEOUT + 3))
   echo "[`date`] sleep for $SECONDS seconds to start $TYPE #$TASK_ID"
   sleep $SECONDS
   ###

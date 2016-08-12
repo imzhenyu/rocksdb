@@ -33,12 +33,12 @@ function usage()
     echo "   stop_onebox_instance      stop rrdb onebox instance"
     echo "   restart_onebox_instance   restart rrdb onebox instance"
     echo
-    echo "   start_kill_test           statr rrdb kill test"
+    echo "   start_kill_test           start rrdb kill test"
     echo "   stop_kill_test            stop rrdb kill test"
     echo "   clear_kill_test           clear rrdb kill test"
     echo
-    echo "   bench                     benchmark test"
-    echo "   shell                     run rrdb_cluster shell"
+    echo "   bench                     run benchmark test"
+    echo "   shell                     run rrdb shell"
     echo
     echo "Command 'run.sh <command> -h' will print help for subcommands."
 }
