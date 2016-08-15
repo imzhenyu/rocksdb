@@ -79,8 +79,8 @@ using GFLAGS::ParseCommandLineFlags;
 using GFLAGS::RegisterFlagValidator;
 using GFLAGS::SetUsageMessage;
 
-#include "replication/client_lib/include/rrdb_client.h"
-using namespace ::dsn::apps;
+#include "pegasus/client.h"
+using namespace ::pegasus;
 
 DEFINE_string(rrdb_config, "replication/config-client.ini", "rrdb config file");
 DEFINE_string(rrdb_cluster_name, "mycluster", "rrdb cluster name");
@@ -2793,7 +2793,7 @@ class Benchmark {
 
     RandomGenerator gen;
     int64_t bytes = 0;
-    irrdb_client* client = pegasus_client_factory::get_client(
+    pegasus_client* client = pegasus_client_factory::get_client(
                 FLAGS_rrdb_cluster_name.c_str(), FLAGS_rrdb_app_name.c_str());
     if (client == nullptr) {
       fprintf(stderr, "create client error\n");
@@ -3000,7 +3000,7 @@ class Benchmark {
     int64_t bytes = 0;
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
-    irrdb_client* client = pegasus_client_factory::get_client(
+    pegasus_client* client = pegasus_client_factory::get_client(
                 FLAGS_rrdb_cluster_name.c_str(), FLAGS_rrdb_app_name.c_str());
     if (client == nullptr) {
       fprintf(stderr, "Create client error\n");
@@ -3238,7 +3238,7 @@ class Benchmark {
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
 
-    irrdb_client* client = pegasus_client_factory::get_client(
+    pegasus_client* client = pegasus_client_factory::get_client(
                 FLAGS_rrdb_cluster_name.c_str(), FLAGS_rrdb_app_name.c_str());
     if (client == nullptr) {
       fprintf(stderr, "create client error\n");

@@ -187,8 +187,8 @@ ifndef DISABLE_WARNING_AS_ERROR
 	WARNING_FLAGS += -Werror
 endif
 
-CFLAGS += $(WARNING_FLAGS) -I. -I./include $(PLATFORM_CCFLAGS) $(OPT)
-CXXFLAGS += $(WARNING_FLAGS) -I. -I./include $(PLATFORM_CXXFLAGS) $(OPT) -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers
+CFLAGS += $(WARNING_FLAGS) -I. -I./include -I./replication/include $(PLATFORM_CCFLAGS) $(OPT)
+CXXFLAGS += $(WARNING_FLAGS) -I. -I./include -I./replication/include $(PLATFORM_CXXFLAGS) $(OPT) -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers
 
 LDFLAGS += $(PLATFORM_LDFLAGS)
 
