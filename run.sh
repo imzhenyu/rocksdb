@@ -316,7 +316,7 @@ function run_start_onebox()
     fi
     run_start_zk
     sed "s/@LOCAL_IP@/`hostname -i`/g;s/@META_COUNT@/${META_COUNT}/g;s/@REPLICA_COUNT@/${REPLICA_COUNT}/g;s/@APP_NAME@/${APP_NAME}/g;s/@PARTITION_COUNT@/${PARTITION_COUNT}/g" \
-        ${ROOT}/replication/config-server.ini >${ROOT}/config-server.ini
+        ${ROOT}/replication/rrdb_server/config-server.ini >${ROOT}/config-server.ini
     echo "starting server"
     mkdir -p onebox
     cd onebox
@@ -751,7 +751,7 @@ function run_start_kill_test()
 
     cd $ROOT
     CONFIG=config-kill-test.ini
-    sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-kill-test.ini >$CONFIG
+    sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/rrdb_kill_test/config.ini >$CONFIG
     ln -s -f ${DSN_ROOT}/bin/rrdb_kill_test/rrdb_kill_test
     echo "./rrdb_kill_test $CONFIG $APP_NAME $THREAD_COUNT &>rrdb_kill_test.log &"
     ./rrdb_kill_test $CONFIG $APP_NAME $THREAD_COUNT &>rrdb_kill_test.log &
@@ -972,12 +972,12 @@ function run_shell()
     done
 
     if [ ${CONFIG_SPECIFIED} -eq 0 ]; then
-        sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/config-shell.ini >${CONFIG}
+        sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/shell/config.ini >${CONFIG}
     fi
 
     cd ${ROOT}
-    ln -s -f ${DSN_ROOT}/bin/rrdb_cluster/rrdb_cluster
-    ./rrdb_cluster config-shell.ini
+    ln -s -f ${DSN_ROOT}/bin/rrdb_shell/rrdb_shell
+    ./rrdb_shell config-shell.ini
 }
 
 ####################################################################

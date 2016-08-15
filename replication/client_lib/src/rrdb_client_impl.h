@@ -1,12 +1,12 @@
 #pragma once
 #include <string>
-#include "rrdb_client.h"
-#include "rrdb.client.h"
-#include "key_utils.h"
+#include <pegasus/client.h>
+#include <pegasus/schema.h>
+#include <rrdb/rrdb.client.h>
 
-namespace dsn{ namespace apps{
+namespace pegasus {
 
-class rrdb_client_impl : public irrdb_client
+class rrdb_client_impl : public pegasus_client
 {
 public:
     rrdb_client_impl(const char* cluster_name, const char* app_name);
@@ -51,8 +51,8 @@ private:
     std::string _cluster_name;
     std::string _app_name;
     std::string _server_uri;
-    rpc_address _server_address;
-    rrdb_client *_client;
+    dsn::rpc_address _server_address;
+    dsn::apps::rrdb_client *_client;
 
     ///
     /// \brief _client_error_to_string
@@ -68,4 +68,4 @@ private:
     static std::unordered_map<int, int> _server_error_to_client;
 };
 
-}} //namespace
+} //namespace

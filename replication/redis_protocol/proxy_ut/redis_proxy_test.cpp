@@ -2,7 +2,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/asio.hpp>
 
-#include "rrdb.client.h"
+#include <rrdb/rrdb.client.h>
 #include "../proxy_lib/proxy_layer.h"
 #include "../proxy_lib/redis_parser.h"
 

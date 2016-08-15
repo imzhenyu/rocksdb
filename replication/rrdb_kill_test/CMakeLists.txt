@@ -10,10 +10,10 @@ set(MY_PROJ_SRC "")
 # "GLOB" for non-recursive search
 set(MY_SRC_SEARCH_MODE "GLOB")
 
-set(MY_PROJ_INC_PATH "../../include" "../client_lib/include")
+set(MY_PROJ_INC_PATH "../include")
 
-set(MY_PROJ_LIBS 
-    rrdb.clientlib
+set(MY_PROJ_LIBS
+    pegasus.clientlib
     )
 
 file(GLOB
@@ -30,7 +30,7 @@ set(MY_BINPLACES ${RES_FILES})
 if (UNIX)
     SET(CMAKE_INSTALL_RPATH ".")
     SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-    set(MY_BINPLACES ${MY_BINPLACES} "${DSN_ROOT}/lib/libdsn.core.so" "${CMAKE_BINARY_DIR}/lib/librrdb.clientlib.so")
+    set(MY_BINPLACES ${MY_BINPLACES} "${DSN_ROOT}/lib/libdsn.core.so" "${CMAKE_BINARY_DIR}/lib/libpegasus.clientlib.so")
 endif()
 
 dsn_add_executable()

@@ -2793,7 +2793,7 @@ class Benchmark {
 
     RandomGenerator gen;
     int64_t bytes = 0;
-    irrdb_client* client = rrdb_client_factory::get_client(
+    irrdb_client* client = pegasus_client_factory::get_client(
                 FLAGS_rrdb_cluster_name.c_str(), FLAGS_rrdb_app_name.c_str());
     if (client == nullptr) {
       fprintf(stderr, "create client error\n");
@@ -2814,10 +2814,10 @@ class Benchmark {
         try_count++;
         int ret = client->set(key.ToString(), "", gen.Generate(value_size_).ToString(),
                               FLAGS_rrdb_timeout_ms);
-        if (ret == ::dsn::apps::RRDB_ERR_OK) {
+        if (ret == ::pegasus::PERR_OK) {
           bytes += value_size_ + key_size_;
           break;
-        } else if (ret != ::dsn::apps::RRDB_ERR_TIMEOUT || try_count > 3) {
+        } else if (ret != ::pegasus::PERR_TIMEOUT || try_count > 3) {
           fprintf(stderr, "Set returned an error: %s\n", client->get_error_string(ret));
           exit(1);
         } else {
@@ -3000,7 +3000,7 @@ class Benchmark {
     int64_t bytes = 0;
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
-    irrdb_client* client = rrdb_client_factory::get_client(
+    irrdb_client* client = pegasus_client_factory::get_client(
                 FLAGS_rrdb_cluster_name.c_str(), FLAGS_rrdb_app_name.c_str());
     if (client == nullptr) {
       fprintf(stderr, "Create client error\n");
@@ -3020,13 +3020,13 @@ class Benchmark {
         try_count++;
         std::string value;
         int ret = client->get(key.ToString(), "", value, FLAGS_rrdb_timeout_ms);
-        if (ret == ::dsn::apps::RRDB_ERR_OK) {
+        if (ret == ::pegasus::PERR_OK) {
           found++;
           bytes += key.size() + value.size();
           break;
-        } else if (ret == ::dsn::apps::RRDB_ERR_NOT_FOUND) {
+        } else if (ret == ::pegasus::PERR_NOT_FOUND) {
           break;
-        } else if (ret != ::dsn::apps::RRDB_ERR_TIMEOUT || try_count > 3) {
+        } else if (ret != ::pegasus::PERR_TIMEOUT || try_count > 3) {
           fprintf(stderr, "Get returned an error: %s\n", client->get_error_string(ret));
           exit(1);
         } else {
@@ -3238,7 +3238,7 @@ class Benchmark {
     std::unique_ptr<const char[]> key_guard;
     Slice key = AllocateKey(&key_guard);
 
-    irrdb_client* client = rrdb_client_factory::get_client(
+    irrdb_client* client = pegasus_client_factory::get_client(
                 FLAGS_rrdb_cluster_name.c_str(), FLAGS_rrdb_app_name.c_str());
     if (client == nullptr) {
       fprintf(stderr, "create client error\n");
@@ -3252,9 +3252,9 @@ class Benchmark {
       while (true) {
         try_count++;
         int ret = client->del(key.ToString(), "", FLAGS_rrdb_timeout_ms);
-        if (ret == ::dsn::apps::RRDB_ERR_OK) {
+        if (ret == ::pegasus::PERR_OK) {
           break;
-        } else if (ret != ::dsn::apps::RRDB_ERR_TIMEOUT || try_count > 3) {
+        } else if (ret != ::pegasus::PERR_TIMEOUT || try_count > 3) {
           fprintf(stderr, "Del returned an error: %s\n", client->get_error_string(ret));
           exit(1);
         } else {
@@ -4131,7 +4131,7 @@ int main(int argc, char** argv) {
                   " [OPTIONS]...");
   ParseCommandLineFlags(&argc, &argv, true);
 
-  bool init = ::dsn::apps::rrdb_client_factory::initialize(FLAGS_rrdb_config.c_str());
+  bool init = ::pegasus::pegasus_client_factory::initialize(FLAGS_rrdb_config.c_str());
   if (!init) {
     fprintf(stderr, "Init rrdb error\n");
     return -1;

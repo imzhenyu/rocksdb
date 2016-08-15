@@ -4,7 +4,7 @@
 #include <dsn/utility/ports.h>
 #include <dsn/utility/utils.h>
 
-namespace dsn{ namespace apps{
+namespace pegasus {
 
 // T may be std::string or ::dsn::blob.
 template <typename T>
@@ -76,5 +76,5 @@ inline uint64_t rrdb_key_hash(const ::dsn::blob& key)
     }
 }
 
-}} //namespace
+} //namespace
 

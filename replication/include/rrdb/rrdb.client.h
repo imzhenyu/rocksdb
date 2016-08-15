@@ -37,7 +37,7 @@ public:
             );
     }
 
-    // - asynchronous with on-stack update_request and update_response    
+    // - asynchronous with on-stack update_request and update_response
     template<typename TCallback>
     ::dsn::task_ptr put(
         const update_request& args,
@@ -86,7 +86,7 @@ public:
             );
     }
 
-    // - asynchronous with on-stack ::dsn::blob and update_response    
+    // - asynchronous with on-stack ::dsn::blob and update_response
     template<typename TCallback>
     ::dsn::task_ptr remove(
         const ::dsn::blob& args,
@@ -135,7 +135,7 @@ public:
             );
     }
 
-    // - asynchronous with on-stack ::dsn::blob and read_response    
+    // - asynchronous with on-stack ::dsn::blob and read_response
     template<typename TCallback>
     ::dsn::task_ptr get(
         const ::dsn::blob& args,

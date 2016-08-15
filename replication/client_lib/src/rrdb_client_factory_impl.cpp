@@ -5,7 +5,7 @@
 # endif
 # define __TITLE__ "rrdb.client.factory.impl"
 
-namespace dsn{ namespace apps{
+namespace pegasus {
 
 std::unordered_map<std::string, rrdb_client_factory_impl::app_to_client_map> rrdb_client_factory_impl::_cluster_to_clients;
 dsn::service::zlock* rrdb_client_factory_impl::_map_lock;
@@ -23,7 +23,7 @@ bool rrdb_client_factory_impl::initialize(const char* config_file)
     return true;
 }
 
-irrdb_client* rrdb_client_factory_impl::get_client(const char* cluster_name, const char* app_name)
+pegasus_client *rrdb_client_factory_impl::get_client(const char* cluster_name, const char* app_name)
 {
     if (cluster_name == nullptr || cluster_name[0] == '\0') {
         derror("invalid parameter 'cluster_name'");
@@ -34,7 +34,7 @@ irrdb_client* rrdb_client_factory_impl::get_client(const char* cluster_name, con
         return nullptr;
     }
 
-    service::zauto_lock l(*_map_lock);
+    dsn::service::zauto_lock l(*_map_lock);
     auto it = _cluster_to_clients.find(cluster_name);
     if (it == _cluster_to_clients.end())
     {
@@ -52,4 +52,4 @@ irrdb_client* rrdb_client_factory_impl::get_client(const char* cluster_name, con
     return it2->second;
 }
 
-}}
+}

@@ -2,17 +2,17 @@
 
 #include <string>
 #include <stdint.h>
-#include "rrdb_error.h"
+#include <pegasus/error.h>
 
-namespace dsn { namespace apps {
+namespace pegasus {
 
 ///
-/// \brief The irrdb_client class
+/// \brief The client class
 /// irrdb_client is the base class that users use to access a specific cluster with an app name
 /// the class of client provides the basic operation to:
 /// set/get/delete the value of a key in a app.
 ///
-class irrdb_client
+class pegasus_client
 {
 public:
     struct internal_info
@@ -25,7 +25,7 @@ public:
 
 public:
     // destructor
-    virtual ~irrdb_client(){}
+    virtual ~pegasus_client(){}
 
     ///
     /// \brief get_app_name
@@ -115,18 +115,18 @@ public:
     /// get error string
     /// all the function above return an int value that indicates an error can be converted into a string for human reading.
     /// \param error_code
-    /// all the error code are defined in "rrdb_err_def.h"
+    /// all the error code are defined in "error_def.h"
     /// \return
     ///
     virtual const char* get_error_string(int error_code) const = 0;
 };
 
-class rrdb_client_factory
+class pegasus_client_factory
 {
 public:
     ///
     /// \brief initialize
-    /// initialize rrdb client lib. must call this function before anything else.
+    /// initialize pegasus client lib. must call this function before anything else.
     /// \param config_file
     /// the configuration file of rrdb client lib
     /// \return
@@ -145,7 +145,7 @@ public:
     /// a cluster can have multiple apps.
     /// \return
     /// the client instance. DO NOT delete this client even after usage.
-    static irrdb_client* get_client(const char* cluster_name, const char* app_name);
+    static pegasus_client* get_client(const char* cluster_name, const char* app_name);
 };
 
-}} //namespace
+} //namespace

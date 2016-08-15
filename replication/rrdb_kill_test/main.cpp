@@ -15,10 +15,11 @@
 
 #include <dsn/service_api_c.h>
 
-#include <rrdb_client.h>
-using namespace ::dsn::apps;
+#include <pegasus/client.h>
 
-irrdb_client* client = nullptr;
+using namespace pegasus;
+
+pegasus_client* client = nullptr;
 std::atomic_llong set_next(0);
 int set_thread_count;
 int get_thread_count;
@@ -74,9 +75,9 @@ void do_set(int thread_id)
             sprintf(buf, "%s%lld", value_prefix, id);
             value.assign(buf);
         }
-        irrdb_client::internal_info info;
+        pegasus::pegasus_client::internal_info info;
         int ret = client->set(hash_key, sort_key, value, 5000, &info);
-        if (ret == RRDB_ERR_OK) {
+        if (ret == PERR_OK) {
             long cur_time = get_time();
             ddebug("SetThread[%d]: set succeed: id=%lld, try=%d, time=%ld (gpid=%d.%d, decree=%lld, server=%s)",
                     thread_id, id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.decree, info.server.c_str());
@@ -115,12 +116,12 @@ void do_get_range(int thread_id, int round_id, long long start_id, long long end
             sprintf(buf, "%s%lld", value_prefix, id);
             value.assign(buf);
         }
-        irrdb_client::internal_info info;
+        pegasus::pegasus_client::internal_info info;
         std::string get_value;
         int ret = client->get(hash_key, sort_key, get_value, 5000, &info);
-        if (ret == RRDB_ERR_OK || ret == RRDB_ERR_NOT_FOUND) {
+        if (ret == PERR_OK || ret == PERR_NOT_FOUND) {
             long cur_time = get_time();
-            if (ret == RRDB_ERR_NOT_FOUND) {
+            if (ret == PERR_NOT_FOUND) {
                 dfatal("GetThread[%d]: round(%d): get not found: id=%lld, try=%d, time=%ld (gpid=%d.%d, server=%s)",
                     thread_id, round_id, id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.server.c_str());
                 exit(-1);
@@ -184,7 +185,7 @@ void do_check(int thread_count)
             char buf[1024];
             sprintf(buf, "%lld", range_end);
             int ret = client->set(check_max_key, "", buf);
-            if (ret == RRDB_ERR_OK) {
+            if (ret == PERR_OK) {
                 ddebug("CheckThread: round(%d): update \"%s\" succeed: check_max=%lld", round_id, check_max_key, range_end);
                 break;
             }
@@ -213,7 +214,7 @@ void do_mark()
         sprintf(buf, "%lld", new_id);
         value.assign(buf);
         int ret = client->set(set_next_key, "", value);
-        if (ret == RRDB_ERR_OK) {
+        if (ret == PERR_OK) {
             long cur_time = get_time();
             ddebug("MarkThread: update \"%s\" succeed: set_next=%lld, time=%ld", set_next_key, new_id, (cur_time - last_time));
             old_id = new_id;
@@ -232,13 +233,13 @@ int main(int argc, const char* argv[])
     }
 
     const char* config_file = argv[1];
-    if (!rrdb_client_factory::initialize(config_file)) {
+    if (!pegasus_client_factory::initialize(config_file)) {
         derror("MainThread: init pegasus failed");
         return -1;
     }
 
     const char* app_name = argv[2];
-    client = rrdb_client_factory::get_client("mycluster", app_name);
+    client = pegasus_client_factory::get_client("mycluster", app_name);
     ddebug("MainThread: app_name=%s", app_name);
 
     set_thread_count = atoi(argv[3]);
@@ -255,7 +256,7 @@ int main(int argc, const char* argv[])
     {
         std::string set_next_value;
         int ret = client->get(set_next_key, "", set_next_value);
-        if (ret == RRDB_ERR_OK) {
+        if (ret == PERR_OK) {
             long long i = atoll(set_next_value.c_str());
             if (i == 0 && !set_next_value.empty()) {
                 derror("MainThread: read \"%s\" failed: value_str=%s", set_next_key, set_next_value.c_str());
@@ -265,7 +266,7 @@ int main(int argc, const char* argv[])
             set_next.store(i);
             break;
         }
-        else if (ret == RRDB_ERR_NOT_FOUND) {
+        else if (ret == PERR_NOT_FOUND) {
             ddebug("MainThread: read \"%s\" not found, init set_next to 0", set_next_key);
             set_next.store(0);
             break;

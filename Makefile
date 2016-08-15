@@ -652,10 +652,10 @@ $(LIBRARY): $(LIBOBJECTS)
 db_bench: db/db_bench.o $(LIBOBJECTS) $(TESTUTIL)
 	$(AM_LINK)
 
-rrdb_bench: db/rrdb_bench.o $(LIBOBJECTS) $(TESTUTIL) ${DSN_ROOT}/lib/libdsn.core.so ${DSN_ROOT}/lib/librrdb.clientlib.so
-	$(AM_LINK) -L${DSN_ROOT}/lib -lrrdb.clientlib -Wl,-rpath,.
+rrdb_bench: db/rrdb_bench.o $(LIBOBJECTS) $(TESTUTIL) ${DSN_ROOT}/lib/libdsn.core.so ${DSN_ROOT}/lib/libpegasus.clientlib.so
+	$(AM_LINK) -L${DSN_ROOT}/lib -lpegasus.clientlib -Wl,-rpath,.
 	cp ${DSN_ROOT}/lib/libdsn.core.so .
-	cp ${DSN_ROOT}/lib/librrdb.clientlib.so .
+	cp ${DSN_ROOT}/lib/libpegasus.clientlib.so .
 	cp ${DSN_ROOT}/lib/libthrift.so .
 
 cache_bench: util/cache_bench.o $(LIBOBJECTS) $(TESTUTIL)

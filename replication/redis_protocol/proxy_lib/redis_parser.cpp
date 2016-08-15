@@ -1,7 +1,7 @@
 #include <boost/lexical_cast.hpp>
+#include <rrdb/rrdb.client.h>
+#include <pegasus/schema.h>
 #include "redis_parser.h"
-#include "rrdb.client.h"
-#include "key_utils.h"
 
 # ifdef __TITLE__
 # undef __TITLE__
@@ -383,9 +383,9 @@ void redis_parser::set(redis_parser::message_entry& entry)
 
         dsn::apps::update_request req;
         dsn::blob null_blob;
-        dsn::apps::rrdb_generate_key(req.key, request.buffers[1].data, null_blob);
+        pegasus::rrdb_generate_key(req.key, request.buffers[1].data, null_blob);
         req.value = request.buffers[2].data;
-        auto partition_hash = dsn::apps::rrdb_key_hash(req.key);
+        auto partition_hash = pegasus::rrdb_key_hash(req.key);
         //TODO: set the timeout
         client->put(req, on_set_reply, std::chrono::milliseconds(2000), 0, partition_hash, proxy_session::hash());
     }
@@ -445,8 +445,8 @@ void redis_parser::get(message_entry &entry)
         };
         dsn::blob req;
         dsn::blob null_blob;
-        dsn::apps::rrdb_generate_key(req, redis_req.buffers[1].data, null_blob);
-        auto partition_hash = dsn::apps::rrdb_key_hash(req);
+        pegasus::rrdb_generate_key(req, redis_req.buffers[1].data, null_blob);
+        auto partition_hash = pegasus::rrdb_key_hash(req);
         //TODO: set the timeout
         client->get(req, on_get_reply, std::chrono::milliseconds(2000), 0, partition_hash, proxy_session::hash());
     }
@@ -498,8 +498,8 @@ void redis_parser::del(message_entry &entry)
         };
         dsn::blob req;
         dsn::blob null_blob;
-        dsn::apps::rrdb_generate_key(req, redis_req.buffers[1].data, null_blob);
-        auto partition_hash = dsn::apps::rrdb_key_hash(req);
+        pegasus::rrdb_generate_key(req, redis_req.buffers[1].data, null_blob);
+        auto partition_hash = pegasus::rrdb_key_hash(req);
         //TODO: set the timeout
         client->remove(req, on_del_reply, std::chrono::milliseconds(2000), 0, partition_hash, proxy_session::hash());
     }

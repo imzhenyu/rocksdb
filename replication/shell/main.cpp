@@ -41,7 +41,7 @@ int main(int argc, const char* argv[])
     std::cout << std::endl;
 
     std::string config_file = argc > 1 ? argv[1] : "config.ini";
-    if (!rrdb_client_factory::initialize(config_file.c_str()))
+    if (!pegasus_client_factory::initialize(config_file.c_str()))
     {
         std::cout << "ERROR: init pegasus failed: " << config_file << std::endl;
         return -1;
@@ -60,7 +60,7 @@ int main(int argc, const char* argv[])
     std::string key = "arguments";
     dsn::replication::replica_helper::load_meta_servers(meta_servers, section.c_str(), key.c_str());
     dsn::replication::replication_ddl_client* client_of_dsn = new dsn::replication::replication_ddl_client(meta_servers);
-    irrdb_client* client_of_rrdb = NULL;
+    pegasus_client* client_of_rrdb = NULL;
 
     while ( true )
     {
@@ -167,24 +167,26 @@ int main(int argc, const char* argv[])
             };
 
             for (int i=1; i<Argc-1; i+=2) {
-                if (strcmp(argv[i], "-gpid") == 0){
-                    sscanf(argv[i + 1], "%d.%d", &request.gpid.raw().u.app_id, &request.gpid.raw().u.partition_index);
+                if (Argv[i] == "-gpid") {
+                    sscanf(Argv[i + 1].c_str(), "%d.%d", &request.gpid.raw().u.app_id, &request.gpid.raw().u.partition_index);
                 }
-                else if (strcmp(argv[i], "-type") == 0){
-                    auto iter = action_map.find(argv[i+1]);
+                else if (Argv[i] == "-type"){
+                    auto iter = action_map.find(Argv[i+1]);
                     if (iter == action_map.end()) {
                         std::cout << "balancer -gpid <appid.pidx> -type <move_pri|copy_pri|copy_sec> -from <from_address> -to <to_address>" << std::endl;
                     }
-                    action_func = action_map[argv[i+1]];
+                    action_func = action_map[Argv[i+1]];
                 }
-                else if (strcmp(argv[i], "-from") == 0) {
-                    from.from_string_ipv4(argv[i+1]);
+                else if (Argv[i] == "-from") {
+                    from.from_string_ipv4(Argv[i+1].c_str());
                 }
-                else if (strcmp(argv[i], "-to") == 0) {
-                    to.from_string_ipv4(argv[i+1]);
+                else if (Argv[i] == "-to") {
+                    to.from_string_ipv4(Argv[i+1].c_str());
                 }
             }
 
+            if (action_func == nullptr)
+                continue;
             action_func(from, to, request.action_list);
             dsn::error_code err = client_of_dsn->send_balancer_proposal(request);
             std::cout << "send balancer proposal result: " << err.to_string() << std::endl;
@@ -200,7 +202,7 @@ int main(int argc, const char* argv[])
                 std::cout << "USAGE: use [app_name]" << std::endl;
                 continue;
             }
-            client_of_rrdb = rrdb_client_factory::get_client(cluster_name.c_str(), app_name.c_str());
+            client_of_rrdb = pegasus::pegasus_client_factory::get_client(cluster_name.c_str(), app_name.c_str());
             if (client_of_rrdb != NULL)
                 get_op(Argc, Argv, client_of_rrdb);
         }
@@ -211,7 +213,7 @@ int main(int argc, const char* argv[])
                 std::cout << "USAGE: use [app_name]" << std::endl;
                 continue;
             }
-            client_of_rrdb = rrdb_client_factory::get_client(cluster_name.c_str(), app_name.c_str());
+            client_of_rrdb = pegasus::pegasus_client_factory::get_client(cluster_name.c_str(), app_name.c_str());
             if (client_of_rrdb != NULL)
                 set_op(Argc, Argv, client_of_rrdb);
         }
@@ -222,7 +224,7 @@ int main(int argc, const char* argv[])
                 std::cout << "USAGE: use [app_name]" << std::endl;
                 continue;
             }
-            client_of_rrdb = rrdb_client_factory::get_client(cluster_name.c_str(), app_name.c_str());
+            client_of_rrdb = pegasus_client_factory::get_client(cluster_name.c_str(), app_name.c_str());
             if (client_of_rrdb != NULL)
                 del_op(Argc, Argv, client_of_rrdb);
         }

@@ -4,9 +4,11 @@
 #include <stdint.h>
 
 #include <dsn/cpp/auto_codes.h>
+#include <rrdb/rrdb.code.definition.h>
+#include <rrdb/rrdb.types.h>
+#include <pegasus/error.h>
+
 #include "rrdb_client_impl.h"
-#include "rrdb_error.h"
-#include "rrdb.code.definition.h"
 
 # ifdef __TITLE__
 # undef __TITLE__
@@ -15,7 +17,7 @@
 
 using namespace dsn;
 
-namespace dsn{ namespace apps{
+namespace pegasus {
 
 #define ROCSKDB_ERROR_START -1000
 
@@ -27,7 +29,7 @@ rrdb_client_impl::rrdb_client_impl(const char* cluster_name, const char* app_nam
 {
     _server_uri = "dsn://" + _cluster_name + "/" + _app_name;
     _server_address.assign_uri(dsn_uri_build(_server_uri.c_str()));
-    _client = new rrdb_client(_server_address);
+    _client = new dsn::apps::rrdb_client(_server_address);
 }
 
 rrdb_client_impl::~rrdb_client_impl()
@@ -58,10 +60,10 @@ int rrdb_client_impl::set(
     if(hash_key.size() > UINT16_MAX)
     {
         derror("invalid hash key: hash key length should be no more than UINT16_MAX, but %d", (int)hash_key.size());
-        return RRDB_ERR_INVALID_HASH_KEY;
+        return PERR_INVALID_HASH_KEY;
     }
 
-    update_request req;
+    dsn::apps::update_request req;
     rrdb_generate_key(req.key, hash_key, sort_key);
     req.value.assign(value.c_str(), 0, value.size());
     auto partition_hash = rrdb_key_hash(req.key);
@@ -98,7 +100,7 @@ int rrdb_client_impl::get(
     if(hash_key.size() > UINT16_MAX)
     {
         derror("invalid hash key: hash key length should be no more than UINT16_MAX, but %d", (int)hash_key.size());
-        return RRDB_ERR_INVALID_HASH_KEY;
+        return PERR_INVALID_HASH_KEY;
     }
 
     dsn::blob req;
@@ -139,7 +141,7 @@ int rrdb_client_impl::del(
     if(hash_key.size() > UINT16_MAX)
     {
         derror("invalid hash key: hash key length should be no more than UINT16_MAX, but %d", (int)hash_key.size());
-        return RRDB_ERR_INVALID_HASH_KEY;
+        return PERR_INVALID_HASH_KEY;
     }
 
     dsn::blob req;
@@ -175,20 +177,20 @@ const char* rrdb_client_impl::get_error_string(int error_code) const
 /*static*/ void rrdb_client_impl::init_error()
 {
     _client_error_to_string.clear();
-    #define RRDB_ERR_CODE(x, y, z) _client_error_to_string[y] = z
-    #include "rrdb_error_def.h"
-    #undef RRDB_ERR_CODE
+    #define PEGASUS_ERR_CODE(x, y, z) _client_error_to_string[y] = z
+    #include <pegasus/error_def.h>
+    #undef PEGASUS_ERR_CODE
 
     _server_error_to_client.clear();
-    _server_error_to_client[dsn::ERR_OK] = RRDB_ERR_OK;
-    _server_error_to_client[dsn::ERR_TIMEOUT] = RRDB_ERR_TIMEOUT;
-    _server_error_to_client[dsn::ERR_FILE_OPERATION_FAILED] = RRDB_ERR_SERVER_INTERNAL_ERROR;
-    _server_error_to_client[dsn::ERR_INVALID_STATE] = RRDB_ERR_SERVER_CHANGED;
-    _server_error_to_client[dsn::ERR_OBJECT_NOT_FOUND] = RRDB_ERR_OBJECT_NOT_FOUND;
-    _server_error_to_client[dsn::ERR_NETWORK_FAILURE] = RRDB_ERR_NETWORK_FAILURE;
+    _server_error_to_client[dsn::ERR_OK] = PERR_OK;
+    _server_error_to_client[dsn::ERR_TIMEOUT] = PERR_TIMEOUT;
+    _server_error_to_client[dsn::ERR_FILE_OPERATION_FAILED] = PERR_SERVER_INTERNAL_ERROR;
+    _server_error_to_client[dsn::ERR_INVALID_STATE] = PERR_SERVER_CHANGED;
+    _server_error_to_client[dsn::ERR_OBJECT_NOT_FOUND] = PERR_OBJECT_NOT_FOUND;
+    _server_error_to_client[dsn::ERR_NETWORK_FAILURE] = PERR_NETWORK_FAILURE;
 
-    _server_error_to_client[dsn::ERR_APP_NOT_EXIST] = RRDB_ERR_APP_NOT_EXIST;
-    _server_error_to_client[dsn::ERR_APP_EXIST] = RRDB_ERR_APP_EXIST;
+    _server_error_to_client[dsn::ERR_APP_NOT_EXIST] = PERR_APP_NOT_EXIST;
+    _server_error_to_client[dsn::ERR_APP_EXIST] = PERR_APP_EXIST;
 
     // rocksdb error;
     for(int i = 1001; i < 1013; i++)
@@ -203,11 +205,12 @@ const char* rrdb_client_impl::get_error_string(int error_code) const
     if(it != _server_error_to_client.end())
         return it->second;
     derror("can't find corresponding client error definition, server error:[%d:%s]", server_error, dsn::error_code(server_error).to_string());
-    return RRDB_ERR_UNKNOWN;
+    return PERR_UNKNOWN;
 }
 
 /*static*/ int rrdb_client_impl::get_rocksdb_server_error(int rocskdb_error)
 {
     return (rocskdb_error == 0) ? 0 : ROCSKDB_ERROR_START - rocskdb_error;
 }
-}} // namespace
+
+} // namespace

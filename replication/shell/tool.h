@@ -3,16 +3,16 @@
 #include <iostream>
 #include <stdio.h>
 #include <string>
-#include <rrdb_client.h>
 #include <dsn/dist/replication/replication_ddl_client.h>
-#include "rrdb_client_impl.h"
-#include "key_utils.h"
 #include <iomanip>
 #include <readline/readline.h>
 #include <readline/history.h>
+
+#include <pegasus/client.h>
+#include <pegasus/schema.h>
 #include <rocksdb/db.h>
 
-using namespace ::dsn::apps;
+using namespace pegasus;
 
 static const char* CLUSTER_INFO_OP = "cluster_info";
 static const char* LIST_APP_OP = "app";
@@ -391,8 +391,8 @@ void hash_op(int Argc, std::string Argv[], std::string& app_name, dsn::replicati
     std::string sort_key = Argv[2];
 
     dsn::blob key;
-    dsn::apps::rrdb_generate_key(key, hash_key, sort_key);
-    uint64_t key_hash = dsn::apps::rrdb_key_hash(key);
+    pegasus::rrdb_generate_key(key, hash_key, sort_key);
+    uint64_t key_hash = pegasus::rrdb_key_hash(key);
 
     int width = strlen("partition_index");
     std::cout << std::setw(width) << std::left << "key_hash" << " : " << key_hash << std::endl;
@@ -428,7 +428,7 @@ void hash_op(int Argc, std::string Argv[], std::string& app_name, dsn::replicati
     }
 }
 
-void get_op(int Argc, std::string Argv[], irrdb_client* client)
+void get_op(int Argc, std::string Argv[], pegasus_client* client)
 {
     if ( Argc != 3 )
     {
@@ -439,10 +439,10 @@ void get_op(int Argc, std::string Argv[], irrdb_client* client)
     std::string hash_key = Argv[1];
     std::string sort_key = Argv[2];
     std::string value;
-    irrdb_client::internal_info info;
+    pegasus_client::internal_info info;
     int ret = client->get(hash_key, sort_key, value, 5000, &info);
-    if (ret != RRDB_ERR_OK) {
-        if (ret == RRDB_ERR_NOT_FOUND) {
+    if (ret != PERR_OK) {
+        if (ret == PERR_NOT_FOUND) {
             fprintf(stderr, "Not found\n");
         }
         else {
@@ -459,7 +459,7 @@ void get_op(int Argc, std::string Argv[], irrdb_client* client)
     fprintf(stderr, "server          : %s\n", info.server.c_str());
 }
 
-void set_op(int Argc, std::string Argv[], irrdb_client* client)
+void set_op(int Argc, std::string Argv[], pegasus_client* client)
 {
     if ( Argc != 4 )
     {
@@ -470,9 +470,9 @@ void set_op(int Argc, std::string Argv[], irrdb_client* client)
     std::string hash_key = Argv[1];
     std::string sort_key = Argv[2];
     std::string value = Argv[3];
-    irrdb_client::internal_info info;
+    pegasus_client::internal_info info;
     int ret = client->set(hash_key, sort_key, value, 5000, &info);
-    if (ret != RRDB_ERR_OK) {
+    if (ret != PERR_OK) {
         fprintf(stderr, "ERROR: %s\n", client->get_error_string(ret));
     }
     else {
@@ -486,7 +486,7 @@ void set_op(int Argc, std::string Argv[], irrdb_client* client)
     fprintf(stderr, "server          : %s\n", info.server.c_str());
 }
 
-void del_op(int Argc, std::string Argv[], irrdb_client* client)
+void del_op(int Argc, std::string Argv[], pegasus_client* client)
 {
     if ( Argc != 3 )
     {
@@ -496,9 +496,9 @@ void del_op(int Argc, std::string Argv[], irrdb_client* client)
 
     std::string hash_key = Argv[1];
     std::string sort_key = Argv[2];
-    irrdb_client::internal_info info;
+    pegasus_client::internal_info info;
     int ret = client->del(hash_key, sort_key, 5000, &info);
-    if (ret != RRDB_ERR_OK) {
+    if (ret != PERR_OK) {
         fprintf(stderr, "ERROR: %s\n", client->get_error_string(ret));
     }
     else {
@@ -533,7 +533,7 @@ void local_get_op(int Argc, std::string Argv[])
     }
 
     dsn::blob key;
-    rrdb_generate_key(key, hash_key, sort_key);
+    pegasus::rrdb_generate_key(key, hash_key, sort_key);
     rocksdb::Slice skey(key.data(), key.length());
     std::string value;
     rocksdb::ReadOptions rd_opts;

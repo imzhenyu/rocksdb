@@ -1,5 +1,5 @@
 # include "rrdb.server.impl.h"
-# include "key_utils.h"
+# include <pegasus/schema.h>
 # include <algorithm>
 # include <dsn/utility/utils.h>
 # include <rocksdb/utilities/checkpoint.h>
@@ -252,7 +252,7 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
 
             if (msg->header->client.partition_hash != 0)
             {
-                uint64_t partition_hash = rrdb_key_hash(key);
+                uint64_t partition_hash = pegasus::rrdb_key_hash(key);
                 dassert(msg->header->client.partition_hash == partition_hash, "inconsistent partition hash");
                 int thread_hash = dsn_gpid_to_thread_hash(_gpid);
                 dassert(msg->header->client.thread_hash == thread_hash, "inconsistent thread hash");
@@ -261,7 +261,7 @@ void rrdb_service_impl::on_batched_write_requests(int64_t decree, dsn_message_t*
             if (_verbose_log)
             {
                 ::dsn::blob hash_key, sort_key;
-                rrdb_restore_key(key, hash_key, sort_key);
+                pegasus::rrdb_restore_key(key, hash_key, sort_key);
                 ddebug("%s: rocksdb write: decree = %" PRId64 ", code = %s, hash_key = \"%.*s\", sort_key = \"%.*s\"",
                        _replica_name.c_str(), decree, dsn_task_code_to_string(msg->local_rpc_code),
                        hash_key.length(), hash_key.data(),
@@ -325,7 +325,7 @@ void rrdb_service_impl::on_get(const ::dsn::blob& key, ::dsn::rpc_replier<read_r
         if (_verbose_log)
         {
             ::dsn::blob hash_key, sort_key;
-            rrdb_restore_key(key, hash_key, sort_key);
+            pegasus::rrdb_restore_key(key, hash_key, sort_key);
             derror("%s: rocksdb get failed: hash_key = \"%.*s\", sort_key = \"%.*s\", error = %s",
                    _replica_name.c_str(),
                    hash_key.length(), hash_key.data(),
