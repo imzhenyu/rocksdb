@@ -310,10 +310,11 @@ function run_start_onebox()
         esac
         shift
     done
-    if [ ! -f ${DSN_ROOT}/bin/rrdb/rrdb ]; then
-        echo "ERROR: file ${DSN_ROOT}/bin/rrdb/rrdb not exist"
+    if [ ! -f ${DSN_ROOT}/bin/rrdb_server/rrdb_server ]; then
+        echo "ERROR: file ${DSN_ROOT}/bin/rrdb_server/rrdb_server not exist"
         exit -1
     fi
+    ln -s -f ${DSN_ROOT}/bin/rrdb_server/rrdb_server
     run_start_zk
     sed "s/@LOCAL_IP@/`hostname -i`/g;s/@META_COUNT@/${META_COUNT}/g;s/@REPLICA_COUNT@/${REPLICA_COUNT}/g;s/@APP_NAME@/${APP_NAME}/g;s/@PARTITION_COUNT@/${PARTITION_COUNT}/g" \
         ${ROOT}/replication/rrdb_server/config-server.ini >${ROOT}/config-server.ini
@@ -324,24 +325,24 @@ function run_start_onebox()
     do
         mkdir -p meta$i;
         cd meta$i
-        ln -s -f ${DSN_ROOT}/bin/rrdb/rrdb rrdb
+        ln -s -f ${DSN_ROOT}/bin/rrdb_server/rrdb_server rrdb_server
         ln -s -f ${ROOT}/config-server.ini config.ini
-        echo "cd `pwd` && ./rrdb config.ini -app_list meta@$i &>result &"
-        ./rrdb config.ini -app_list meta@$i &>result &
+        echo "cd `pwd` && ./rrdb_server config.ini -app_list meta@$i &>result &"
+        ./rrdb_server config.ini -app_list meta@$i &>result &
         PID=$!
-        ps -ef | grep rrdb | grep $PID
+        ps -ef | grep rrdb_server | grep $PID
         cd ..
     done
     for j in $(seq ${REPLICA_COUNT})
     do
         mkdir -p replica$j
         cd replica$j
-        ln -s -f ${DSN_ROOT}/bin/rrdb/rrdb rrdb
+        ln -s -f ${DSN_ROOT}/bin/rrdb_server/rrdb_server rrdb_server
         ln -s -f ${ROOT}/config-server.ini config.ini
-        echo "cd `pwd` && ./rrdb config.ini -app_list replica@$j &>result &"
-        ./rrdb config.ini -app_list replica@$j &>result &
+        echo "cd `pwd` && ./rrdb_server config.ini -app_list replica@$j &>result &"
+        ./rrdb_server config.ini -app_list replica@$j &>result &
         PID=$!
-        ps -ef | grep rrdb | grep $PID
+        ps -ef | grep rrdb_server | grep $PID
         cd ..
     done
 }
@@ -373,8 +374,8 @@ function run_stop_onebox()
         esac
         shift
     done
-    ps -ef | grep rrdb | grep 'app_list meta@' | awk '{print $2}' | xargs kill &>/dev/null
-    ps -ef | grep rrdb | grep 'app_list replica@' | awk '{print $2}' | xargs kill &>/dev/null
+    ps -ef | grep rrdb_server | grep 'app_list meta@' | awk '{print $2}' | xargs kill &>/dev/null
+    ps -ef | grep rrdb_server | grep 'app_list replica@' | awk '{print $2}' | xargs kill &>/dev/null
 }
 
 #####################
@@ -404,7 +405,7 @@ function run_list_onebox()
         esac
         shift
     done
-    ps -ef | grep rrdb | grep app_list
+    ps -ef | grep rrdb_server | grep app_list
 }
 
 #####################
@@ -494,15 +495,15 @@ function run_start_onebox_instance()
             echo "ERROR: invalid meta_id"
             exit -1
         fi
-        if ps -ef | grep rrdb | grep app_list | grep meta@$META_ID ; then
+        if ps -ef | grep rrdb_server | grep app_list | grep meta@$META_ID ; then
             echo "INFO: meta@$META_ID already running"
             exit -1
         fi
         cd $dir
-        echo "cd `pwd` && ./rrdb config.ini -app_list meta@$META_ID &>result &"
-        ./rrdb config.ini -app_list meta@$META_ID &>result &
+        echo "cd `pwd` && ./rrdb_server config.ini -app_list meta@$META_ID &>result &"
+        ./rrdb_server config.ini -app_list meta@$META_ID &>result &
         PID=$!
-        ps -ef | grep rrdb | grep $PID
+        ps -ef | grep rrdb_server | grep $PID
         cd ..
         echo "INFO: meta@$META started"
     fi
@@ -512,15 +513,15 @@ function run_start_onebox_instance()
             echo "ERROR: invalid replica_id"
             exit -1
         fi
-        if ps -ef | grep rrdb | grep app_list | grep replica@$REPLICA_ID ; then
+        if ps -ef | grep rrdb_server | grep app_list | grep replica@$REPLICA_ID ; then
             echo "INFO: replica@$REPLICA_ID already running"
             exit -1
         fi
         cd $dir
-        echo "cd `pwd` && ./rrdb config.ini -app_list replica@$REPLICA_ID &>result &"
-        ./rrdb config.ini -app_list replica@$REPLICA_ID &>result &
+        echo "cd `pwd` && ./rrdb_server config.ini -app_list replica@$REPLICA_ID &>result &"
+        ./rrdb_server config.ini -app_list replica@$REPLICA_ID &>result &
         PID=$!
-        ps -ef | grep rrdb | grep $PID
+        ps -ef | grep rrdb_server | grep $PID
         cd ..
         echo "INFO: replica@$REPLICA_ID started"
     fi
@@ -581,11 +582,11 @@ function run_stop_onebox_instance()
             echo "ERROR: invalid meta_id"
             exit -1
         fi
-        if ! ps -ef | grep rrdb | grep app_list | grep meta@$META_ID ; then
+        if ! ps -ef | grep rrdb_server | grep app_list | grep meta@$META_ID ; then
             echo "INFO: meta@$META_ID is not running"
             exit -1
         fi
-        ps -ef | grep rrdb | grep "app_list meta@$META_ID\>" | awk '{print $2}' | xargs kill &>/dev/null
+        ps -ef | grep rrdb_server | grep "app_list meta@$META_ID\>" | awk '{print $2}' | xargs kill &>/dev/null
         echo "INFO: meta@$META_ID stopped"
     fi
     if [ $REPLICA_ID != "0" ]; then
@@ -594,11 +595,11 @@ function run_stop_onebox_instance()
             echo "ERROR: invalid replica_id"
             exit -1
         fi
-        if ! ps -ef | grep rrdb | grep app_list | grep replica@$REPLICA_ID ; then
+        if ! ps -ef | grep rrdb_server | grep app_list | grep replica@$REPLICA_ID ; then
             echo "INFO: replica@$REPLICA_ID is not running"
             exit -1
         fi
-        ps -ef | grep rrdb | grep "app_list replica@$REPLICA_ID\>" | awk '{print $2}' | xargs kill &>/dev/null
+        ps -ef | grep rrdb_server | grep "app_list replica@$REPLICA_ID\>" | awk '{print $2}' | xargs kill &>/dev/null
         echo "INFO: replica@$REPLICA_ID stopped"
     fi
 }
@@ -753,8 +754,8 @@ function run_start_kill_test()
     CONFIG=config-kill-test.ini
     sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/rrdb_kill_test/config.ini >$CONFIG
     ln -s -f ${DSN_ROOT}/bin/rrdb_kill_test/rrdb_kill_test
-    echo "./rrdb_kill_test $CONFIG $APP_NAME $THREAD_COUNT &>rrdb_kill_test.log &"
-    ./rrdb_kill_test $CONFIG $APP_NAME $THREAD_COUNT &>rrdb_kill_test.log &
+    echo "./rrdb_kill_test $CONFIG $APP_NAME $THREAD_COUNT &>/dev/null &"
+    ./rrdb_kill_test $CONFIG $APP_NAME $THREAD_COUNT &>/dev/null &
     sleep 0.2
     echo
 
@@ -835,7 +836,7 @@ function run_clear_kill_test()
     done
     run_stop_kill_test
     run_clear_onebox
-    rm -rf *.log *.data config-*.ini &>/dev/null
+    rm -rf kill_test.log *.data config-*.ini &>/dev/null
 }
 
 #####################
@@ -972,7 +973,7 @@ function run_shell()
     done
 
     if [ ${CONFIG_SPECIFIED} -eq 0 ]; then
-        sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/shell/config.ini >${CONFIG}
+        sed "s/@LOCAL_IP@/`hostname -i`/g" ${ROOT}/replication/rrdb_shell/config.ini >${CONFIG}
     fi
 
     cd ${ROOT}

@@ -11,8 +11,8 @@ set(DSN_BUILD_RUNTIME FALSE)
 
 dsn_common_setup()
 
-add_subdirectory(rrdb_server)
 add_subdirectory(client_lib)
-add_subdirectory(shell)
+add_subdirectory(rrdb_server)
+add_subdirectory(rrdb_shell)
 add_subdirectory(rrdb_kill_test)
 add_subdirectory(redis_protocol)

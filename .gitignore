@@ -1,11 +1,15 @@
 replication/.matchfile
 replication/builder
 onebox/
-data/
+.zk_install/
+*.data/
+rrdb_server
 rrdb_bench
-rrdb_cluster
+rrdb_shell
+rrdb_kill_test
+config-*.ini
 .kill_test.shell.*
-.zk*
+kill_test.log
 
 TARGETS
 make_config.mk
