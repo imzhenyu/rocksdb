@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <vector>
+#include <algorithm>
 
 #include <dsn/service_api_c.h>
 
@@ -30,6 +31,13 @@ const char* check_max_key = "check_max";
 const char* hash_key_prefix = "kill_test_hash_key_";
 const char* sort_key_prefix = "kill_test_sort_key_";
 const char* value_prefix = "kill_test_value_";
+const long stat_batch = 100000;
+const long stat_min_pos = 0;
+const long stat_p90_pos = stat_batch - stat_batch / 10 - 1;
+const long stat_p99_pos = stat_batch - stat_batch / 100 - 1;
+const long stat_p999_pos = stat_batch - stat_batch / 1000 - 1;
+const long stat_p9999_pos = stat_batch - stat_batch / 10000 - 1;
+const long stat_max_pos = stat_batch - 1;
 
 # ifdef __TITLE__
 # undef __TITLE__
@@ -63,6 +71,9 @@ void do_set(int thread_id)
     std::string value;
     long long id = 0;
     int try_count = 0;
+    long stat_count = 0;
+    std::vector<long> stat_time;
+    stat_time.resize(stat_batch);
     long last_time = get_time();
     while (true) {
         if (try_count == 0) {
@@ -81,6 +92,17 @@ void do_set(int thread_id)
             long cur_time = get_time();
             ddebug("SetThread[%d]: set succeed: id=%lld, try=%d, time=%ld (gpid=%d.%d, decree=%lld, server=%s)",
                     thread_id, id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.decree, info.server.c_str());
+            stat_time[stat_count++] = cur_time - last_time;
+            if (stat_count == stat_batch) {
+                std::sort(stat_time.begin(), stat_time.end());
+                long total_time = 0;
+                for (auto t : stat_time)
+                    total_time += t;
+                ddebug("SetThread[%d]: set statistics: count=%lld, min=%lld, P90=%lld, P99=%lld, P999=%lld, P9999=%lld, max=%lld, avg=%lld",
+                       thread_id, stat_count, stat_time[stat_min_pos], stat_time[stat_p90_pos], stat_time[stat_p99_pos],
+                       stat_time[stat_p999_pos], stat_time[stat_p9999_pos], stat_time[stat_max_pos], total_time / stat_batch);
+                stat_count = 0;
+            }
             last_time = cur_time;
             try_count = 0;
         }
@@ -106,6 +128,9 @@ void do_get_range(int thread_id, int round_id, long long start_id, long long end
     std::string value;
     long long id = start_id;
     int try_count = 0;
+    long stat_count = 0;
+    std::vector<long> stat_time;
+    stat_time.resize(stat_batch);
     long last_time = get_time();
     while (id <= end_id) {
         if (try_count == 0) {
@@ -134,6 +159,17 @@ void do_get_range(int thread_id, int round_id, long long start_id, long long end
             else {
                 dinfo("GetThread[%d]: round(%d): get succeed: id=%lld, try=%d, time=%ld (gpid=%d.%d, server=%s)",
                     thread_id, round_id, id, try_count, (cur_time - last_time), info.app_id, info.partition_index, info.server.c_str());
+                stat_time[stat_count++] = cur_time - last_time;
+                if (stat_count == stat_batch) {
+                    std::sort(stat_time.begin(), stat_time.end());
+                    long total_time = 0;
+                    for (auto t : stat_time)
+                        total_time += t;
+                    ddebug("GetThread[%d]: get statistics: count=%lld, min=%lld, P90=%lld, P99=%lld, P999=%lld, P9999=%lld, max=%lld, avg=%lld",
+                           thread_id, stat_count, stat_time[stat_min_pos], stat_time[stat_p90_pos], stat_time[stat_p99_pos],
+                           stat_time[stat_p999_pos], stat_time[stat_p9999_pos], stat_time[stat_max_pos], total_time / stat_batch);
+                    stat_count = 0;
+                }
             }
             last_time = cur_time;
             try_count = 0;
