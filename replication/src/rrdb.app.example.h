@@ -1,9 +1,32 @@
 # pragma once
 # include "rrdb.client.h"
 # include "rrdb.client.perf.h"
-# include "rrdb.server.impl.h"
+# include "rrdb.server.h"
 
 namespace dsn { namespace apps { 
+// server app example
+class rrdb_server_app : 
+    public ::dsn::service_app
+{
+public:
+    rrdb_server_app(dsn_gpid gpid)
+        : ::dsn::service_app(gpid) {}
+
+    virtual ::dsn::error_code start(int argc, char** argv) override
+    {
+        _rrdb_svc.open_service(gpid());
+        return ::dsn::ERR_OK;
+    }
+
+    virtual ::dsn::error_code stop(bool cleanup = false) override
+    {
+        _rrdb_svc.close_service(gpid());
+        return ::dsn::ERR_OK;
+    }
+
+private:
+    rrdb_service _rrdb_svc;
+};
 
 // client app example
 class rrdb_client_app : 
@@ -11,8 +34,9 @@ class rrdb_client_app :
     public virtual ::dsn::clientlet
 {
 public:
-    rrdb_client_app(dsn_gpid gpid) : ::dsn::service_app(gpid) {}
-    
+    rrdb_client_app(dsn_gpid gpid)
+        : ::dsn::service_app(gpid) {}
+        
     ~rrdb_client_app() 
     {
         stop();
@@ -27,7 +51,7 @@ public:
         }
 
         // argv[1]: e.g., dsn://mycluster/simple-kv.instance0
-        _server = url_host_address(argv[1]);
+        _server = ::dsn::url_host_address(argv[1]);
             
         _rrdb_client.reset(new rrdb_client(_server));
         _timer = ::dsn::tasking::enqueue_timer(LPC_RRDB_TEST_TIMER, this, [this]{on_test_timer();}, std::chrono::seconds(1));
@@ -61,14 +85,14 @@ public:
             //_rrdb_client->remove({});
            
         }
-        {
-            //sync:
-            //auto result = _rrdb_client->merge_sync({});
-            //std::cout << "call RPC_RRDB_RRDB_MERGE end, return " << result.first.to_string() << std::endl;
-            //async: 
-            //_rrdb_client->merge({});
-           
-        }
+        //{
+        //    //sync:
+        //    auto result = _rrdb_client->merge_sync({});
+        //    std::cout << "call RPC_RRDB_RRDB_MERGE end, return " << result.first.to_string() << std::endl;
+        //    //async: 
+        //    //_rrdb_client->merge({});
+        //   
+        //}
         {
             //sync:
             auto result = _rrdb_client->get_sync({});
@@ -91,7 +115,8 @@ class rrdb_perf_test_client_app :
     public virtual ::dsn::clientlet
 {
 public:
-    rrdb_perf_test_client_app(dsn_gpid gpid) : ::dsn::service_app(gpid)
+    rrdb_perf_test_client_app(dsn_gpid gpid)
+        : ::dsn::service_app(gpid)
     {
         _rrdb_client = nullptr;
     }
@@ -107,10 +132,10 @@ public:
             return ::dsn::ERR_INVALID_PARAMETERS;
 
         // argv[1]: e.g., dsn://mycluster/simple-kv.instance0
-        _server = url_host_address(argv[1]);
+        _server = ::dsn::url_host_address(argv[1]);
 
         _rrdb_client = new rrdb_perf_test_client(_server);
-        _rrdb_client->start_test("rrdb.perf_test.case", 4);
+        _rrdb_client->start_test("rrdb.perf-test.case.", 4);
         return ::dsn::ERR_OK;
     }
 
