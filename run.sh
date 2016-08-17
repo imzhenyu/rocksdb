@@ -35,6 +35,7 @@ function usage()
     echo
     echo "   start_kill_test           start rrdb kill test"
     echo "   stop_kill_test            stop rrdb kill test"
+    echo "   list_kill_test            list rrdb kill test"
     echo "   clear_kill_test           clear rrdb kill test"
     echo
     echo "   bench                     run benchmark test"
@@ -314,6 +315,10 @@ function run_start_onebox()
         echo "ERROR: file ${DSN_ROOT}/bin/rrdb_server/rrdb_server not exist"
         exit -1
     fi
+    if ps -ef | grep rrdb_server | grep -E 'app_list meta@|app_list replica@'; then
+        echo "ERROR: some onebox processes are running, start failed"
+        exit -1
+    fi
     ln -s -f ${DSN_ROOT}/bin/rrdb_server/rrdb_server
     run_start_zk
     sed "s/@LOCAL_IP@/`hostname -i`/g;s/@META_COUNT@/${META_COUNT}/g;s/@REPLICA_COUNT@/${REPLICA_COUNT}/g;s/@APP_NAME@/${APP_NAME}/g;s/@PARTITION_COUNT@/${PARTITION_COUNT}/g" \
@@ -330,7 +335,7 @@ function run_start_onebox()
         echo "cd `pwd` && ./rrdb_server config.ini -app_list meta@$i &>result &"
         ./rrdb_server config.ini -app_list meta@$i &>result &
         PID=$!
-        ps -ef | grep rrdb_server | grep $PID
+        ps -ef | grep rrdb_server | grep "\<$PID\>"
         cd ..
     done
     for j in $(seq ${REPLICA_COUNT})
@@ -342,7 +347,7 @@ function run_start_onebox()
         echo "cd `pwd` && ./rrdb_server config.ini -app_list replica@$j &>result &"
         ./rrdb_server config.ini -app_list replica@$j &>result &
         PID=$!
-        ps -ef | grep rrdb_server | grep $PID
+        ps -ef | grep rrdb_server | grep "\<$PID\>"
         cd ..
     done
 }
@@ -374,8 +379,7 @@ function run_stop_onebox()
         esac
         shift
     done
-    ps -ef | grep rrdb_server | grep 'app_list meta@' | awk '{print $2}' | xargs kill &>/dev/null
-    ps -ef | grep rrdb_server | grep 'app_list replica@' | awk '{print $2}' | xargs kill &>/dev/null
+    ps -ef | grep rrdb_server | grep -E 'app_list meta@|app_list replica@' | awk '{print $2}' | xargs kill &>/dev/null
 }
 
 #####################
@@ -405,7 +409,7 @@ function run_list_onebox()
         esac
         shift
     done
-    ps -ef | grep rrdb_server | grep app_list
+    ps -ef | grep rrdb_server | grep -E 'app_list meta@|app_list replica@' | sort -k11
 }
 
 #####################
@@ -495,7 +499,7 @@ function run_start_onebox_instance()
             echo "ERROR: invalid meta_id"
             exit -1
         fi
-        if ps -ef | grep rrdb_server | grep app_list | grep meta@$META_ID ; then
+        if ps -ef | grep rrdb_server | grep "app_list meta@$META_ID\>" ; then
             echo "INFO: meta@$META_ID already running"
             exit -1
         fi
@@ -503,7 +507,7 @@ function run_start_onebox_instance()
         echo "cd `pwd` && ./rrdb_server config.ini -app_list meta@$META_ID &>result &"
         ./rrdb_server config.ini -app_list meta@$META_ID &>result &
         PID=$!
-        ps -ef | grep rrdb_server | grep $PID
+        ps -ef | grep rrdb_server | grep "\<$PID\>"
         cd ..
         echo "INFO: meta@$META started"
     fi
@@ -513,7 +517,7 @@ function run_start_onebox_instance()
             echo "ERROR: invalid replica_id"
             exit -1
         fi
-        if ps -ef | grep rrdb_server | grep app_list | grep replica@$REPLICA_ID ; then
+        if ps -ef | grep rrdb_server | grep "app_list replica@$REPLICA_ID\>" ; then
             echo "INFO: replica@$REPLICA_ID already running"
             exit -1
         fi
@@ -521,7 +525,7 @@ function run_start_onebox_instance()
         echo "cd `pwd` && ./rrdb_server config.ini -app_list replica@$REPLICA_ID &>result &"
         ./rrdb_server config.ini -app_list replica@$REPLICA_ID &>result &
         PID=$!
-        ps -ef | grep rrdb_server | grep $PID
+        ps -ef | grep rrdb_server | grep "\<$PID\>"
         cd ..
         echo "INFO: replica@$REPLICA_ID started"
     fi
@@ -582,7 +586,7 @@ function run_stop_onebox_instance()
             echo "ERROR: invalid meta_id"
             exit -1
         fi
-        if ! ps -ef | grep rrdb_server | grep app_list | grep meta@$META_ID ; then
+        if ! ps -ef | grep rrdb_server | grep "app_list meta@$META_ID\>" ; then
             echo "INFO: meta@$META_ID is not running"
             exit -1
         fi
@@ -595,7 +599,7 @@ function run_stop_onebox_instance()
             echo "ERROR: invalid replica_id"
             exit -1
         fi
-        if ! ps -ef | grep rrdb_server | grep app_list | grep replica@$REPLICA_ID ; then
+        if ! ps -ef | grep rrdb_server | grep "app_list replica@$REPLICA_ID\>" ; then
             echo "INFO: replica@$REPLICA_ID is not running"
             exit -1
         fi
@@ -744,9 +748,6 @@ function run_start_kill_test()
         shift
     done
 
-    run_clear_kill_test
-    echo
-
     run_start_onebox -m $META_COUNT -r $REPLICA_COUNT -a $APP_NAME -p $PARTITION_COUNT
     echo
 
@@ -759,19 +760,12 @@ function run_start_kill_test()
     sleep 0.2
     echo
 
-    echo "./kill_test.sh $META_COUNT $REPLICA_COUNT $APP_NAME $KILL_TYPE $SLEEP_TIME &>kill_test.log &"
-    ./kill_test.sh $META_COUNT $REPLICA_COUNT $APP_NAME $KILL_TYPE $SLEEP_TIME &>kill_test.log &
+    echo "[`date`] start kill_test.sh" >>kill_test.log
+    echo "./kill_test.sh $META_COUNT $REPLICA_COUNT $APP_NAME $KILL_TYPE $SLEEP_TIME >>kill_test.log 2>&1 &"
+    ./kill_test.sh $META_COUNT $REPLICA_COUNT $APP_NAME $KILL_TYPE $SLEEP_TIME >>kill_test.log 2>&1 &
     echo
 
-    echo "------------------------------"
-    run_list_onebox
-    ps -ef | grep rrdb_kill_test | grep -v grep
-    ps -ef | grep kill_test.sh | grep -v grep
-    echo "------------------------------"
-    echo "Server dir: ./onebox"
-    echo "Client dir: ./rrdb_kill_test.data"
-    echo "Kill   log: ./kill_test.log"
-    echo "------------------------------"
+    run_list_kill_test
 }
 
 #####################
@@ -805,6 +799,44 @@ function run_stop_kill_test()
     ps -ef | grep rrdb_kill_test | awk '{print $2}' | xargs kill &>/dev/null
     ps -ef | grep kill_test.sh | awk '{print $2}' | xargs kill &>/dev/null
     run_stop_onebox
+}
+
+#####################
+## list_kill_test
+#####################
+function usage_list_kill_test()
+{
+    echo "Options for subcommand 'list_kill_test':"
+    echo "   -h|--help         print the help info"
+}
+
+function run_list_kill_test()
+{
+    while [[ $# > 0 ]]; do
+        key="$1"
+        case $key in
+            -h|--help)
+                usage_list_kill_test
+                exit 0
+                ;;
+            *)
+                echo "ERROR: unknown option \"$key\""
+                echo
+                usage_list_kill_test
+                exit -1
+                ;;
+        esac
+        shift
+    done
+    echo "------------------------------"
+    run_list_onebox
+    ps -ef | grep rrdb_kill_test | grep -v grep
+    ps -ef | grep kill_test.sh | grep -v grep
+    echo "------------------------------"
+    echo "Server dir: ./onebox"
+    echo "Client dir: ./rrdb_kill_test.data"
+    echo "Kill   log: ./kill_test.log"
+    echo "------------------------------"
 }
 
 #####################
@@ -1043,6 +1075,10 @@ case $cmd in
     stop_kill_test)
         shift
         run_stop_kill_test $*
+        ;;
+    list_kill_test)
+        shift
+        run_list_kill_test $*
         ;;
     clear_kill_test)
         shift
