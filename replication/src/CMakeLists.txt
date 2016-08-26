@@ -42,4 +42,4 @@ if (UNIX)
     set(MY_BINPLACES ${MY_BINPLACES} "${DSN_ROOT}/lib/libdsn.core.so")
 endif()
 
-dsn_add_executable()
+dsn_add_shared_library()
